@@ -29,4 +29,6 @@ ScratchPluginSrc1.4.zip contains C projects.
             UnicodePlugin-osx/... (12 files and directories)
             UnicodePlugin-win/... (5 files)
 
-
+ScratchSkin1.4.zip contains a single directory, ScratchSkin,
+containing 275 image files, the buttons and icons that make up the
+Scratch UI. It also contains a small sound file, kitten.wav.
