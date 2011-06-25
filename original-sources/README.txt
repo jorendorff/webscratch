@@ -31,4 +31,4 @@ ScratchPluginSrc1.4.zip contains C projects.
 
 ScratchSkin1.4.zip contains a single directory, ScratchSkin,
 containing 275 image files, the buttons and icons that make up the
-Scratch UI. It also contains a small sound file, kitten.wav.
+Scratch UI. It also contains a small sound file, Kitten.wav.
