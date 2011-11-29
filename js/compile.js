@@ -365,7 +365,7 @@
                 case "AssignExpr":
                     {
                         var assgn = translateExpr(n.left, POSTFIX_PREC, "") + " = " + translateExpr(n.right, ASSIGN_PREC, indent + "    ");
-                        if (prec >= ASSIGN_PREC)
+                        if (prec <= ASSIGN_PREC)
                             return assgn;
                         else
                             return "(" + assgn + ")";
