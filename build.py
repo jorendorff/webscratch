@@ -54,6 +54,8 @@ sourcesdir = os.path.join(builddir, "sources")
 
 def main():
     assert os.path.isdir(rootdir)
+
+    # unzip original-sources to build/sources
     if not os.path.isdir(sourcesdir):
         print "mkdir", sourcesdir
         os.makedirs(sourcesdir)
@@ -68,6 +70,7 @@ def main():
         finally:
             zf.close()
 
+    # Check for ScratchSources.st.
     sources_latin1 = os.path.join(sourcesdir, 'ScratchSource1.4', 'ScratchSources.st')
     if not os.path.isfile(sources_latin1):
         print "build/sources/ScratchSource1.4/ScratchSources.st must be built manually."
@@ -88,13 +91,23 @@ def main():
         st = infile.read()
     with codecs.open(sources_utf8, 'w', 'utf-8') as outfile:
         outfile.write(st)
+    print
 
+    # Check for a JS engine.
     if 'JS' not in os.environ:
         print "JS environment variable not set."
         print "The build script requires Mozilla's JS shell to be installed."
         print "export JS='full/path/to/js -m -n' and try again!"
         return
 
+    # Run a test.
+    cmd = os.environ['JS'] + ' handmade-test.js'
+    tests_dir = os.path.join(rootdir, 'js', 'tests')
+    print 'cd %s && %s' % (tests_dir, cmd)
+    subprocess.check_call(cmd, shell=True, cwd=tests_dir)
+    print
+
+    # Compile ScratchSources.st to JS.
     sources_js = os.path.join(builddir, 'ScratchSources.js')
     cmd = os.environ['JS'] + ' main.js "' + sources_utf8 + '"'
     print cmd, " > " + sources_js

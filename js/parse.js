@@ -708,7 +708,6 @@ var smalltalk;
                     // do nothing
                 } else {
                     parse(m[6].replace(/!!/g, '!'), "expr", cls);
-                    console.log(m[6]);
                 }
             } else {
                 // long row of dashes or blank line, ignore
