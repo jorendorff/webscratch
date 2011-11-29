@@ -644,7 +644,7 @@ var console;
     function Symbol(str) {
         var obj = Object.create(Symbol_im);
         obj.__str = str;
-        return undefined;
+        return obj;
     }
 
 
