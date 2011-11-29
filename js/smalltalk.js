@@ -549,8 +549,8 @@ var console;
     defClass("SequenceableCollection", classes.Collection, {}, {}, [], []);
     defClass("ArrayedCollection", classes.SequenceableCollection, {
         size: function () {
-            // Strings have .__value; everything else has .__array.
-            var arr = this.__array || this.__value;
+            // Strings have .__str; everything else has .__array.
+            var arr = this.__array || this.__str;
             return getSmallInteger(arr.length);
         }
     }, {}, [], []);
