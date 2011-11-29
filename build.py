@@ -2,15 +2,16 @@
 """ Build webscratch. Usage: python build.py """
 
 ## The next thing to do here is to automate the process of extracting the
-## Smalltalk source code from ScratchSourceCode1.4.image. Unfortunately (and
+## Smalltalk source code from ScratchSourceCode1.4.image.  Unfortunately (and
 ## astoundingly) there doesn't seem to be any obvious way to automate this.
 ##
-## Here is how to do it by hand:
+## Here is how to do it by hand on Mac; something very similar will work for
+## Linux and Windows.  This process creates a single file,
+## build/sources/ScratchSource1.4/ScratchSources.st.
 ##
-##   - Download Scratch from
-##     <http://download.scratch.mit.edu/MacScratch1.4.dmg> and install it. You
-##     are doing this to get a working Squeak VM that can run Scratch, not for
-##     Scratch itself.
+##   - Download Scratch from <http://info.scratch.mit.edu/Scratch_1.4_Download>
+##     and install it.  You are doing this to get a working Squeak VM that can
+##     run Scratch, not for Scratch itself.
 ##
 ##   - Run these commands:
 ##         cd webscratch
@@ -26,7 +27,7 @@
 ##
 ##   - Paste this snippet of code into the workspace:
 ##         |f|
-##         f _ FileStream newFileNamed: 'ScratchSources.txt'.
+##         f _ FileStream newFileNamed: 'ScratchSources.st'.
 ##         SystemOrganization categories do:
 ##             [:c | SystemOrganization fileOutCategory: c on: f].
 ##         f close.
@@ -42,7 +43,7 @@
 ##   - Close Squeak. Don't bother saving changes.
 ##
 ##   - Run this command to fix up the old-school Mac newlines in the file:
-##         perl -p -i -e 's/\r/\n/g' ScratchSources.txt
+##         perl -p -i -e 's/\r/\n/g' ScratchSources.st
 
 import zipfile
 import os
@@ -67,6 +68,11 @@ def main():
             zf.extractall(sourcesdir)
         finally:
             zf.close()
+
+    if not os.path.isfile(os.path.join(sourcesdir, 'ScratchSource1.4', 'ScratchSources.st')):
+        print "build/sources/ScratchSource1.4/ScratchSources.st must be built manually."
+        print "Follow the instructions in build.py, then re-run this script."
+        return
 
 if __name__ == '__main__':
     main()
