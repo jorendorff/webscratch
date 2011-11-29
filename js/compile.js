@@ -1,6 +1,8 @@
 // Current bug: classes aren't initialized, so Array.empty() returns nil.
 
 (function () {
+    "use strict";
+
     function assert(b, msg) { if (!b) throw new Error("assertion failed: " + msg); }
 
     var ASSIGN_PREC = 1;
@@ -211,9 +213,9 @@
                         //console.warn("No such primitive: " + JSON.stringify(n));
                         s += indent + "// No such primitive.\n";
                     } else {
-                        function replacement(s, n) {
+                        var replacement = function(s, n) {
                             return methodArgJSNames[parseInt(n)];
-                        }
+                        };
                         ps = ps.replace(/{([0-9]+)}/g, replacement);
                         ps = ps.replace(/\n$/, ''); // chomp trailing newline
                         ps = ps.replace(/^/mg, indent);
@@ -305,7 +307,7 @@
                         var seq = n.body.seq;
                         var stmts = '', last;
                         if (seq.length === 0) {
-                            last = indent2 + "return " + this.nil + ";\n";
+                            last = indent2 + "return " + comp.nil + ";\n";
                         } else {
                             for (var i = 0; i < seq.length - 1; i++)
                                 stmts += indent2 + translateExpr(seq[i], ASSIGN_PREC, indent2) + ";\n";
@@ -433,11 +435,11 @@
                 }
                 s += a.join(",\n") + "\n    },\n";
 
-                function varNames(vn) {
+                var varNames = function (vn) {
                     if (vn.length === 0)
                         return "[]";
                     return "['_" + vn.join("', '_") + "']";
-                }
+                };
                 s += "    " + varNames(cls.instanceVariableNames) + ", ";
                 s += varNames(cls.classVariableNames) + ", ";
                 assert(subclassKindToFlags.hasOwnProperty(cls.subclassKind));
@@ -484,7 +486,7 @@
         var c = new Compilation(classes);
 
         var classdefs = Object.create(null);
-        for (name in classes) {
+        for (var name in classes) {
             classdefs[name] = {superclassName: classes[name].superclassName,
                                code: c.translateClass(classes[name]),
                                mark: false};
@@ -507,7 +509,7 @@
                 cd.mark = true;
             }
         }
-        for (name in classdefs)
+        for (var name in classdefs)
             write(name);
 
         return ("(function (__smalltalk) {\n" +

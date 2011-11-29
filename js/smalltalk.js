@@ -1,6 +1,23 @@
 // Smalltalk runtime, for use with compile.js and code emitted by it
 
-var SmalltalkRuntime = (function () {
+var SmalltalkRuntime;
+var console;
+
+(function () {
+    "use strict";
+
+    if (typeof console === "undefined") {
+        // Fake console.
+        console = {
+            log: function () {
+                print("// log: " + uneval(Array.slice(arguments)));
+            },
+            warn: function () {
+                print("// warn: " + uneval(Array.slice(arguments)));
+            }
+        };
+    }
+
     function assert(b, msg) {
         if (!b) throw new Error("assertion failed: " + msg);
     }
@@ -324,18 +341,18 @@ var SmalltalkRuntime = (function () {
         // Define class methods.
         var clsmethods = Object.keys(cm);
         for (var i = 0; i < clsmethods.length; i++) {
-            var name = clsmethods[i];
-            mcls_im[name] = cm[name];
+            var x = clsmethods[i];
+            mcls_im[x] = cm[x];
         }
 
         // Define instance methods.
         var im_names = Object.keys(im);
         for (var i = 0; i < im_names.length; i++) {
-            var name = im_names[i];
-            cls_im[name] = im[name];
+            var x = im_names[i];
+            cls_im[x] = im[x];
         }
 
-        classes[name] = cls;
+        assertEq(classes[name], cls);
         return cls;
     }
 
@@ -633,7 +650,7 @@ var SmalltalkRuntime = (function () {
 
     // === Exports
 
-    return {
+    SmalltalkRuntime = {
         classes: classes,
         nil: nil,
         true: true_,

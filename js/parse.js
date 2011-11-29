@@ -52,7 +52,10 @@
 // 6 gcd: 3 + 1; factorial ===> Cascade(6, [gcd: 3 + 1, factorial]) = 720
 //                          not 6 gcd: Cascade(3, [+ 1, factorial]) = 6
 
-var smalltalk = (function () {
+var smalltalk;
+
+(function () {
+    "use strict";
 
     function assert(b, msg) { if (!b) throw new Error("assertion failed: " + msg); }
 
@@ -218,12 +221,12 @@ var smalltalk = (function () {
                 n = +s;
             } else {
                 var base = parseInt(m[2].replace(/^0*/, ''));
-                function digit(s, i) {
+                var digit = function (s, i) {
                     var c = s.charCodeAt(i);
                     var v = c - (c < 58 ? 48 : 55);
                     check(v < base, "digit " + c + " is out of range for base " + base + " in number literal " + s);
                     return v;
-                }
+                };
                 var n = 0;
                 for (var i = 1; i < m[3].length; i++)
                     n = n * base + digit(m[3], i);
@@ -827,9 +830,11 @@ var smalltalk = (function () {
 
     var characters = [];
 
-    return {tokenize: tokenize,
-            parseSqueakSource: parseSqueakSource,
-            parseExpr: parseExpr,
-            callGraph: callGraph,
-            characters: characters};
+    smalltalk = {
+        tokenize: tokenize,
+        parseSqueakSource: parseSqueakSource,
+        parseExpr: parseExpr,
+        callGraph: callGraph,
+        characters: characters
+    };
 })();
