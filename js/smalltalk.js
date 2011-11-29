@@ -637,10 +637,10 @@ var console;
 
     // --- Strings
     defClass("String", classes.ArrayedCollection, {
-        at_: function (i) {
+        at_: function String$at_(i) {
             return chars[this.__str.charCodeAt(i.__value - 1)];
         },
-        at_put_: function (index, v) {
+        at_put_: function String$at_put_(index, v) {
             if (v.__class !== classes.Character)
                 this.error(getString("Strings only store Characters"));
             if (index.__class !== classes.SmallInteger && !index.isInteger())
@@ -654,7 +654,7 @@ var console;
             this.__str = s.slice(0, i) + String.fromCharCode(v.__value) + s.slice(i + 1);
             return this;
         },
-        byteAt_: function (i) {
+        byteAt_: function String$byteAt_(i) {
             return getSmallInteger(this.__str.charCodeAt(i.__value - i));
         },
         byteAt_put_: bust
