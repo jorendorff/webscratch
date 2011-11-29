@@ -45,8 +45,7 @@
 ##   - Run this command to fix up the old-school Mac newlines in the file:
 ##         perl -p -i -e 's/\r/\n/g' ScratchSources.st
 
-import zipfile
-import os
+import os, zipfile, codecs, subprocess
 
 rootdir = os.path.abspath(os.path.dirname(__file__))
 origdir = os.path.join(rootdir, "original-sources")
@@ -69,10 +68,38 @@ def main():
         finally:
             zf.close()
 
-    if not os.path.isfile(os.path.join(sourcesdir, 'ScratchSource1.4', 'ScratchSources.st')):
+    sources_latin1 = os.path.join(sourcesdir, 'ScratchSource1.4', 'ScratchSources.st')
+    if not os.path.isfile(sources_latin1):
         print "build/sources/ScratchSource1.4/ScratchSources.st must be built manually."
         print "Follow the instructions in build.py, then re-run this script."
         return
+
+    # Mozilla's JS engine can only read UTF-8 files, not binary. But Squeak
+    # Smalltalk source files are really 8-bit; they may contain strings with
+    # non-ASCII bytes which should be retained.
+    #
+    # Solution: a horrible horrible hack. Treat the 8-bit binary data as if it
+    # were Latin-1 data. Then UTF-8-encode it.
+    #
+    # Queasymaking. Just ignore it. It works.
+    #
+    sources_utf8 = os.path.join(sourcesdir, 'ScratchSource1.4', 'ScratchSources.st.utf8')
+    with codecs.open(sources_latin1, 'rU', 'iso8859-1') as infile:
+        st = infile.read()
+    with codecs.open(sources_utf8, 'w', 'utf-8') as outfile:
+        outfile.write(st)
+
+    if 'JS' not in os.environ:
+        print "JS environment variable not set."
+        print "The build script requires Mozilla's JS shell to be installed."
+        print "export JS='full/path/to/js -m -n' and try again!"
+        return
+
+    sources_js = os.path.join(builddir, 'ScratchSources.js')
+    cmd = os.environ['JS'] + ' main.js "' + sources_utf8 + '"'
+    print cmd, " > " + sources_js
+    with open(sources_js, 'wb') as outfile:
+        subprocess.check_call(cmd, shell=True, cwd=os.path.join(rootdir, 'js'), stdout=outfile)
 
 if __name__ == '__main__':
     main()
