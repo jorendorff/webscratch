@@ -112,7 +112,6 @@ var console;
         for (var i = 0, n = iv.length; i < n; i++)
             obj[iv[i]] = nil;
 
-        // Strings, Symbols, and LargeIntegers get a byte array.
         switch (this.__flags) {
         case 0:
             break;
@@ -120,7 +119,12 @@ var console;
             obj.__array = [];
             break;
         case 4: case 6:
-            obj.__array = new Uint8Array();
+            // ByteArrays and LargeIntegers get a byte array.
+            // Strings and Symbols get a string.
+            if (this === classes.String || Object.prototype.isPrototypeOf(classes.String.__im, this.__im))
+                obj.__str = "";
+            else
+                obj.__array = new Uint8Array();
             break;
         }
         return obj;
@@ -151,7 +155,10 @@ var console;
             obj.__array = Array(toJSNaturalNumber(size));
             break;
         case 4: case 6:
-            obj.__array = new Uint8Array(toJSNaturalNumber(size));
+            if (this === classes.String || Object.prototype.isPrototypeOf(classes.String.__im, this.__im))
+                obj.__str = Array(toJSNaturalNumber(size) + 1).join("\0");
+            else
+                obj.__array = new Uint8Array(toJSNaturalNumber(size));
             break;
         }
         return obj;
@@ -633,7 +640,20 @@ var console;
         at_: function (i) {
             return chars[this.__str.charCodeAt(i.__value - 1)];
         },
-        at_put_: bust,
+        at_put_: function (index, v) {
+            if (v.__class !== classes.Character)
+                this.error(getString("Strings only store Characters"));
+            if (index.__class !== classes.SmallInteger && !index.isInteger())
+                this.errorNonIntegerIndex();
+            var s = this.__str;
+            assertEq(typeof s, 'string');
+            var i = index.__value - 1;
+            if (i < 0 || i >= s.length)
+                this.errorSubscriptBounds_(index);
+
+            this.__str = s.slice(0, i) + String.fromCharCode(v.__value) + s.slice(i + 1);
+            return this;
+        },
         byteAt_: function (i) {
             return getSmallInteger(this.__str.charCodeAt(i.__value - i));
         },
