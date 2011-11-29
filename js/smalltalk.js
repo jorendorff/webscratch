@@ -188,12 +188,20 @@ var console;
 
     function Object_basicAt_(i) {
         var a = this.__array;
-        return a[i.__value - 1];
+        var v = a[i.__value - 1];
+        if (a instanceof Uint8Array)
+            return getSmallInteger(v);
+        return v;
     }
 
     function Object_basicAt_put_(i, v) {
         var a = this.__array;
-        a[i.__value - 1] = v;
+        if (a instanceof Uint8Array) {
+            assertEq(typeof v.__value, 'number');
+            a[i.__value - 1] = v.__value;
+        } else {
+            a[i.__value - 1] = v;
+        }
         return this;
     }
 
