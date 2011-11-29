@@ -227,7 +227,7 @@ var console;
 
     function Object_error_(msg) {
         debugger;
-        throw new Error(msg);
+        throw new Error(msg.__str);
     }
 
     var nextHash = 0;
@@ -641,8 +641,7 @@ var console;
             return chars[this.__str.charCodeAt(i.__value - 1)];
         },
         at_put_: function String$at_put_(index, v) {
-            if (v.__class !== classes.Character)
-                this.error(getString("Strings only store Characters"));
+            // Check index.
             if (index.__class !== classes.SmallInteger && !index.isInteger())
                 this.errorNonIntegerIndex();
             var s = this.__str;
@@ -651,7 +650,16 @@ var console;
             if (i < 0 || i >= s.length)
                 this.errorSubscriptBounds_(index);
 
-            this.__str = s.slice(0, i) + String.fromCharCode(v.__value) + s.slice(i + 1);
+            // Check value.
+            var ch;
+            if (v.__class === classes.Character)
+                ch = String.fromCharCode(v._value.__value);
+            else if (v.__class === classes.SmallInteger || v.isInteger())
+                ch = String.fromCharCode(v.__value);
+            else
+                this.error_(getString("Strings only store Characters"));
+
+            this.__str = s.slice(0, i) + ch + s.slice(i + 1);
             return this;
         },
         byteAt_: function String$byteAt_(i) {
@@ -674,6 +682,16 @@ var console;
         obj.__str = str;
         return obj;
     }
+
+    // A circular dependency between String#intern and Symbol#initialize makes
+    // it impossible to start without pre-populating Symbol#SingleCharSymbols.
+    var symbols = [], sym_im = classes.Symbol.__im;
+    for (var i = 0; i < 128; i++) {
+        var s = Object.create(sym_im);
+        s.__str = String.fromCharCode(i);
+        symbols[i] = s;
+    }
+    classes.Symbol._SingleCharSymbols = Array_(symbols);
 
 
     // === Exports
