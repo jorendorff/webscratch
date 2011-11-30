@@ -230,7 +230,6 @@ var console;
             }
             return false_;
         },
-        "==": function (that) { return this === that ? true_ : false_; },
         identityHash: function () {
             if (!("__identityHash" in this))
                 this.__identityHash = getSmallInteger(nextHash++);
@@ -492,6 +491,10 @@ var console;
     // Object#perform:withArguments:inSuperclass:
     primitives[100] = (
         "return {2}.__im[{0}.__str.replace(/:/g, '_')].apply(this, {1}.__array);\n");
+
+    // Object#==
+    primitives[110] = (
+        "return this === {0} ? __smalltalk.true : __smalltalk.false;");
 
     // primitiveSecondsClock
     var squeakEpoch = new Date(1901, 0, 1, 0, 0, 0).getTime() / 1000;
