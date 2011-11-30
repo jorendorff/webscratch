@@ -394,15 +394,37 @@ var console;
                 "    return this.__value " + op + " {0}.__value ? __smalltalk.true : __smalltalk.false;\n");
     }
 
-    primitives[1] = numOp("+");  // primitiveAdd
+    // SmallInteger#+ and #-.
+    primitives[1] = numOp("+");
     primitives[2] = numOp("-");
+
+    // SmallInteger#<, #>, #<=, #>=, #=, and #~=.
     primitives[3] = cmpOp("<");
     primitives[4] = cmpOp(">");
     primitives[5] = cmpOp("<=");
     primitives[6] = cmpOp(">=");
     primitives[7] = cmpOp("===");
     primitives[8] = cmpOp("!==");
-    //primitives[9] = numOp("*");  // this is no good, could be inaccurate
+
+    // SmallInteger#*. This is careful about the range of the result, because
+    // the maximum SmallInteger value is 0x3fffffff, and multiplying that by
+    // itself using JS numbers produces 1152921502459363300, 29 less than the
+    // correct answer. Addition and subtraction do not have this problem; even
+    // results that would overflow 32 bits are still exact in JS (64-bit
+    // floating-point) numbers.
+    primitives[9] = (
+        "if ({0}.__class === _SmallInteger) {\n" +
+        "    var $$r = this.__value * {0}.__value;\n" +
+        "    if (-0x80000000 <= $$r && $$r <= 0x7fffffff)\n" +
+        "        return __smalltalk.Integer($$r);\n" +
+        "}\n");
+
+    // SmallInteger#//
+    primitives[12] = (
+        "if ({0}.__class === _SmallInteger) {" +
+        "    return __smalltalk.Integer(Math.floor(this.__value / {0}.__value));\n");
+
+    // SmallInteger#bitAnd:, #bitOr:, and #bitXor:.
     primitives[14] = bitOp("&");
     primitives[15] = bitOp("|");
     primitives[16] = bitOp("^");
@@ -424,9 +446,8 @@ var console;
         "    }\n" +
         "}\n");
 
-    primitives[40] = (
-        "if (this.__class === _SmallInteger)\n" +
-        "    return __smalltalk.Float(this.__value);\n");
+    // SmallInteger#asFloat
+    primitives[40] = "return __smalltalk.Float(this.__value);\n";
 
     // Float#+ and #-.
     primitives[41] = (
@@ -497,7 +518,7 @@ var console;
     primitives[68] = "throw new Error('CompiledMethod#objectAt:');\n";
     primitives[69] = "throw new Error('CompiledMethod#objectAt:put:');\n";
 
-    // Object#basicNew and Object#basicNew:.
+    // Object#basicNew, Object#basicNew:, Interval new.
     primitives[70] = "return __smalltalk.basicNew(this);\n";
     primitives[71] = "return __smalltalk.basicNew_(this, {0});\n";
 
