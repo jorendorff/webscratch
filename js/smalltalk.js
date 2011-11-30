@@ -193,17 +193,6 @@ var console;
         flushCache: noop
     });
 
-    function Object_basicAt_put_(i, v) {
-        var a = this.__array;
-        if (a instanceof Uint8Array) {
-            assertEq(typeof v.__value, 'number');
-            a[i.__value - 1] = v.__value;
-        } else {
-            a[i.__value - 1] = v;
-        }
-        return this;
-    }
-
     function Object_shallowCopy() {
         var copy = Object.create(Object.getPrototypeOf(this));
         var iv = this.__class.__iv;
@@ -225,8 +214,6 @@ var console;
     var nextHash = 0;
 
     defMethods(Object_im, {
-        at_put_: Object_basicAt_put_,
-        basicAt_put_: Object_basicAt_put_,
         basicSize: function Object$basicSize() {
             return getSmallInteger(this.__array.length);
         },
@@ -480,8 +467,24 @@ var console;
     // Object#at: and Object#basicAt:. The real thing accepts LargeInteger and
     // even Float arguments. For now we support SmallIntegers only.
     primitives[60] = (
+        // bug: only works for SmallIntegers.
         "var $$a = this.__array, $$v = $$a[{0}.__value - 1];\n" +
         "return ($$a instanceof Uint8Array) ? __smalltalk.Integer($$v) : $$v;\n");
+
+    // Object#at:put: and Object#basicAt:put:
+    primitives[61] = (
+        "var $$a = this.__array;\n" +
+        "if ($$a) {\n" +
+        // bug: only works for SmallIntegers.
+        "    var $$i = {0}.__value - 1;\n" +
+        "    if ($$a instanceof Uint8Array) {\n" +
+        "        assertEq(typeof {1}.__value, 'number');\n" +
+        "        $$a[$$i] = {1}.__value;\n" +
+        "    } else {\n" +
+        "        $$a[$$i] = {1};\n" +
+        "    }\n" +
+        "    return {1};\n" +
+        "}\n");
 
     primitives[62] = "return __smalltalk.Integer(this.__array.length);\n";
     primitives[70] = "return _Behavior.new.call(this);\n";

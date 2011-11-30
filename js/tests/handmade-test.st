@@ -10336,6 +10336,14 @@ testPrimitives
 	"60: Object#at: / Object#basicAt:"
 	self check: [({14 . 92} at: 2) = 92];
 	     check: [((ByteArray new: 5) at: 5) = 0].
+
+        "61: Object#at:put: / Object#basicAt:put:"
+        self check: [ :a |
+                a _ {0 . 0}.
+                a at: 1 put: 3.
+                a basicAt: 2 put: 7.
+                (a at: 1) = 3 and: [(a at: 2) = 7].
+             ].
 ! !
 
 !HandmadeTests methodsFor: 'support' stamp: 'jto 5/6/2011 19:55'!
