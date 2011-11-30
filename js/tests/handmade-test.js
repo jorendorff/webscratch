@@ -9,11 +9,8 @@
 
     try {
         var st = read("handmade-test.st");
-        print("source is: " + st.length + " bytes");
         var ast = smalltalk.parseSqueakSource(st);
         var js = smalltalk.translate(ast);
-        print("compiled:  " + js.length + " bytes");
-        print(js);
         var initfn = eval(js);
         initfn(SmalltalkRuntime);
 

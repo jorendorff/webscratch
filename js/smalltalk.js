@@ -464,7 +464,6 @@ var console;
         "    } else if ($$k > -32) {\n" +
         "        return __smalltalk.Integer($$b >> -$$k);\n" +
         "    }\n" +
-        "    console.log('oh dear, ' + $$b + ', ' + $$k);\n" +
         "}\n");
 
     primitives[40] = (
