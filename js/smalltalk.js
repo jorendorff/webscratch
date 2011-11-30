@@ -230,7 +230,6 @@ var console;
         },
         clone: Object_shallowCopy,
         shallowCopy: Object_shallowCopy,
-        class: function () { return this.__class; },
         perform_: function (aSymbol) { return this.perform_withArguments_(aSymbol, Array_([])); },
         perform_with_: function (aSymbol, arg1) {
             return this.perform_withArguments_(aSymbol, Array_([arg1]));
@@ -498,6 +497,9 @@ var console;
     // Object#==
     primitives[110] = (
         "return this === {0} ? __smalltalk.true : __smalltalk.false;");
+
+    // Object#class
+    primitives[111] = "return this.__class;\n";
 
     // primitiveSecondsClock
     var squeakEpoch = new Date(1901, 0, 1, 0, 0, 0).getTime() / 1000;
