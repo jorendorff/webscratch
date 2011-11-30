@@ -253,7 +253,6 @@ var console;
             console.log("=== dbeep ===");
             return this;
         },
-        asOop: function () { return this.identityHash(); },
         instVarAt_: function (i) {
             var a = this.__class.__iv;
             return this[a[i.__value - 1]];
@@ -476,7 +475,7 @@ var console;
 
     primitives[70] = "return _Behavior.new.call(this);\n";
 
-    // Object#identityHash.
+    // Object#identityHash and Object#asOop.
     var nextHash = 0;
     function getNextHash() {
         return getSmallInteger((nextHash = (nextHash + 1) | 0));
