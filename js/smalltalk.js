@@ -253,15 +253,6 @@ var console;
             console.log("=== dbeep ===");
             return this;
         },
-        instVarAt_: function (i) {
-            var a = this.__class.__iv;
-            return this[a[i.__value - 1]];
-        },
-        instVarAt_put_: function (i, v) {
-            var a = this.__class.__iv;
-            this[a[i.__value - 1]] = v;
-            return this;
-        },
         nextInstance: die,
         nextObject: die,
         someObject: die,
@@ -474,6 +465,16 @@ var console;
     primitives[62] = "return __smalltalk.Integer(this.__array.length);\n";
 
     primitives[70] = "return _Behavior.new.call(this);\n";
+
+    // Object#instVarAt:.
+    // bug: only works for SmallIntegers.
+    primitives[73] = "return this[this.__class.__iv[{0}.__value - 1]];\n";
+
+    // Object#instVarAt:put:.
+    // bug: only works for SmallIntegers.
+    primitives[74] = (
+        "this[this.__class.__iv[{0}.__value - 1]] = {1};\n" +
+        "return {1};\n");
 
     // Object#identityHash and Object#asOop.
     var nextHash = 0;
