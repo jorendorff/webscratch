@@ -10245,6 +10245,7 @@ To run the tests:
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
 runTests
 	self testBasics;
+	     testIdentifiers;
 	     testIntegers;
 	     testPrimitives
 ! !
@@ -10270,6 +10271,25 @@ testBasics
 	self check: [{1. 2. 3. 3. 5. 7. 12} isSorted].
 	self check: [{1. 2. 3. 3. 5. 4. 12} isSorted not].
 
+! !
+
+!HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
+testIdentifiers
+	|arguments class eval if private this|
+
+	arguments _ 1.
+	class _ 2.
+	eval _ 3.
+	if _ 4.
+	private _ 5.
+	this _ 6.
+
+	self check: [arguments = 1];
+	     check: [class = 2];
+	     check: [eval = 3];
+	     check: [if = 4];
+	     check: [private = 5];
+	     check: [this = 6].
 ! !
 
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
@@ -10312,6 +10332,10 @@ testPrimitives
 	     "check: [2147483648.5 truncated = 2147483648];"
 	     check: [-2147483647.5 truncated = -2147483647].
 	     "check: [-2147483648.0 truncated = -2147483648];"
+
+	"60: Object#at: / Object#basicAt:"
+	self check: [({14 . 92} at: 2) = 92];
+	     check: [((ByteArray new: 5) at: 5) = 0].
 ! !
 
 !HandmadeTests methodsFor: 'support' stamp: 'jto 5/6/2011 19:55'!

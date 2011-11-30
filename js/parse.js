@@ -1,8 +1,18 @@
 // JavaScript names (all of these are local to the functionball):
 //   _k24 - (and other integers) Constants.
+//   __smalltalk, $B - Runtime support.
 //   _SmallInteger - Class objects. These always match /^_[A-Z][A-Za-z0-9]*$/.
 //   abc - Local variables and arguments always match /^[A-Za-z][A-Za-z0-9]*$/.
-//   this_ - Local variables and arguments whose names happen to be JS keywords are given a trailing underscore.
+//   this_ - Local variables and arguments whose names happen to be JS keywords
+//          (or 'arguments' or 'eval') are given a trailing underscore.  This
+//          can't collide with anything since Smalltalk identifiers can't
+//          contain underscores.
+//   $a - A special name used by compiler-generated code to implement
+//          return-from-block.
+//   $$k - Variables used in primitives. Since primitives are just pasted into
+//          the compiled code, they need to use variable names that won't
+//          collide with anything else.  These always match
+//          /^\$\$[A-Za-z0-9]+$/.
 //
 // Names of prototype object properties:
 //   .banana() - The method "banana", which takes no arguments.

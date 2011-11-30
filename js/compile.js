@@ -9,7 +9,7 @@
     var jsReservedWords = {
         arguments: 1, break: 1, case: 1, catch: 1, class: 1, const: 1,
         continue: 1, debugger: 1, default: 1, delete: 1, do: 1, else: 1,
-        enum: 1, export: 1, extends: 1, false: 1, finally: 1, for: 1,
+        enum: 1, eval: 1, export: 1, extends: 1, false: 1, finally: 1, for: 1,
         function: 1, if: 1, implements: 1, import: 1, in: 1, instanceof: 1,
         interface: 1, let: 1, new: 1, null: 1, package: 1, private: 1,
         protected: 1, public: 1, return: 1, static: 1, super: 1, switch: 1,

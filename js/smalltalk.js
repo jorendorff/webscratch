@@ -193,14 +193,6 @@ var console;
         flushCache: noop
     });
 
-    function Object_basicAt_(i) {
-        var a = this.__array;
-        var v = a[i.__value - 1];
-        if (a instanceof Uint8Array)
-            return getSmallInteger(v);
-        return v;
-    }
-
     function Object_basicAt_put_(i, v) {
         var a = this.__array;
         if (a instanceof Uint8Array) {
@@ -233,9 +225,7 @@ var console;
     var nextHash = 0;
 
     defMethods(Object_im, {
-        at_: Object_basicAt_,
         at_put_: Object_basicAt_put_,
-        basicAt_: Object_basicAt_,
         basicAt_put_: Object_basicAt_put_,
         basicSize: function Object$basicSize() {
             return getSmallInteger(this.__array.length);
@@ -460,44 +450,51 @@ var console;
     primitives[16] = bitOp("^");
 
     // SmallInteger#bitShift:
-    primitives[17] =
+    primitives[17] = (
         "if (__smalltalk.isSmall(this) && __smalltalk.isSmall({0})) {\n" +
-        "    var $0 = __smalltalk.smallValue(this), $1 = __smalltalk.smallValue({0});\n" +
-        "    if ($1 === 0) {\n" +
+        "    var $$b = __smalltalk.smallValue(this), $$k = __smalltalk.smallValue({0});\n" +
+        "    if ($$k === 0) {\n" +
         "        return this;\n" +
-        "    } else if ($1 > 0) {\n" +
-        // This only hits for positive $0. It might be better to test that
-        // (($0 << $1) >> $1) === $0, i.e. that 32 bits is sufficient to
+        "    } else if ($$k > 0) {\n" +
+        // This only hits for positive $$b. It might be better to test that
+        // (($$b << $$k) >> $$k) === $$b, i.e. that 32 bits is sufficient to
         // represent the result; but I can't be bothered to do the proof.
-        "        if ($1 < 32 && ($0 & (-1 << (32 - $1))) === 0)\n" +
-        "            return __smalltalk.Integer($0 << $1);\n" +
-        "    } else if ($1 > -32) {\n" +
-        "        return __smalltalk.Integer($0 >> -$1);\n" +
+        "        if ($$k < 32 && ($$b & (-1 << (32 - $$k))) === 0)\n" +
+        "            return __smalltalk.Integer($$b << $$k);\n" +
+        "    } else if ($$k > -32) {\n" +
+        "        return __smalltalk.Integer($$b >> -$$k);\n" +
         "    }\n" +
-        "    console.log('oh dear, ' + $0 + ', ' + $1);\n" +
-        "}\n";
+        "    console.log('oh dear, ' + $$b + ', ' + $$k);\n" +
+        "}\n");
 
-    primitives[40] =
+    primitives[40] = (
         "if (this.__class === _SmallInteger)\n" +
-        "    return __smalltalk.Float(this.__value);\n";
+        "    return __smalltalk.Float(this.__value);\n");
 
     // Float#truncated
     // JS has Math.{floor,ceil,round}, none of which just truncates the fractional part.
     // But the built-in ToInt32 primitive does, and we can get that by doing 'f | 0'.
-    primitives[51] =
+    primitives[51] = (
         "if (-0x80000000 <= this.__value && this.__value <= 0xffffffff)\n" +
-        "    return __smalltalk.Integer(this.__value | 0);\n";
+        "    return __smalltalk.Integer(this.__value | 0);\n");
+
+    // Object#at: and Object#basicAt:. The real thing accepts LargeInteger and
+    // even Float arguments. For now we support SmallIntegers only.
+    primitives[60] = (
+        "var $$a = this.__array, $$v = $$a[{0}.__value - 1];\n" +
+        "return ($$a instanceof Uint8Array) ? __smalltalk.Integer($$v) : $$v;\n");
 
     primitives[62] = "return __smalltalk.Integer(this.__array.length);\n";
     primitives[70] = "return _Behavior.new.call(this);\n";
 
     // Object#perform:withArguments:inSuperclass:
-    primitives[100] =
-        "return {2}.__im[{0}.__str.replace(/:/g, '_')].apply(this, {1}.__array);\n";
+    primitives[100] = (
+        "return {2}.__im[{0}.__str.replace(/:/g, '_')].apply(this, {1}.__array);\n");
 
     // primitiveSecondsClock
     var squeakEpoch = new Date(1901, 0, 1, 0, 0, 0).getTime() / 1000;
-    primitives[137] = "return __smalltalk.Integer(Math.floor(new Date().getTime() / 1000) - __smalltalk.squeakEpoch);\n";
+    primitives[137] = (
+        "return __smalltalk.Integer(Math.floor(new Date().getTime() / 1000) - __smalltalk.squeakEpoch);\n");
 
     defClass("SmallInteger", classes.Integer, {
         "*": function (that) {
