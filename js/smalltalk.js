@@ -486,6 +486,10 @@ var console;
     primitives[62] = "return __smalltalk.Integer(this.__array.length);\n";
     primitives[70] = "return _Behavior.new.call(this);\n";
 
+    // Object#someInstance and Object#nextInstance.
+    primitives[77] = "throw new Error('Object#someInstance');\n";
+    primitives[78] = "throw new Error('Object#nextInstance');\n";
+
     // Object#perform:withArguments:inSuperclass:
     primitives[100] = (
         "return {2}.__im[{0}.__str.replace(/:/g, '_')].apply(this, {1}.__array);\n");
@@ -494,6 +498,10 @@ var console;
     var squeakEpoch = new Date(1901, 0, 1, 0, 0, 0).getTime() / 1000;
     primitives[137] = (
         "return __smalltalk.Integer(Math.floor(new Date().getTime() / 1000) - __smalltalk.squeakEpoch);\n");
+
+    // Object#someObject and Object#nextObject.
+    primitives[138] = "throw new Error('Object#someObject');\n";
+    primitives[139] = "throw new Error('Object#nextObject');\n";
 
     defClass("SmallInteger", classes.Integer, {
         "*": function (that) {
