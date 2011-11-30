@@ -1,0 +1,7 @@
+# Ignore emacs detritus.
+*~
+\#*\#
+.\#*
+
+# Ignore the build directory.
+build/
