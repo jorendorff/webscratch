@@ -511,13 +511,7 @@ var console;
             return that.__class === SmallInteger_class
                    ? getInteger(Math.floor(this.__value / that.__value))
                    : classes.Integer.__im["//"].call(this, that);
-        },
-        "\\\\": function(that) {
-            return this.error_(getString("not implemented: SmallInteger \\\\"));
-        },
-        quo_: function (that) {
-            return this.error_(getString("not implemented: SmallInteger quo:"));
-        },
+        }
     }, {}, [], []);
     var SmallInteger_class = classes.SmallInteger;
     var SmallInteger_im = SmallInteger_class.__im;
