@@ -211,8 +211,6 @@ var console;
         throw new Error(msg.__str);
     }
 
-    var nextHash = 0;
-
     defMethods(Object_im, {
         pointsTo_: function Object$pointsTo_(v) {
             var keys = Object.keys(this);
@@ -229,11 +227,6 @@ var console;
                 }
             }
             return false_;
-        },
-        identityHash: function () {
-            if (!("__identityHash" in this))
-                this.__identityHash = getSmallInteger(nextHash++);
-            return this.__identityHash;
         },
         clone: Object_shallowCopy,
         shallowCopy: Object_shallowCopy,
@@ -483,6 +476,16 @@ var console;
     primitives[62] = "return __smalltalk.Integer(this.__array.length);\n";
 
     primitives[70] = "return _Behavior.new.call(this);\n";
+
+    // Object#identityHash.
+    var nextHash = 0;
+    function getNextHash() {
+        return getSmallInteger((nextHash = (nextHash + 1) | 0));
+    }
+    primitives[75] = (
+        "if (!('__identityHash' in this))\n" +
+        "    this.__identityHash = __smalltalk.getNextHash();\n" +
+        "return this.__identityHash;\n");
 
     // Object#someInstance and Object#nextInstance.
     primitives[77] = "throw new Error('Object#someInstance');\n";
@@ -741,6 +744,7 @@ var console;
         getPrimitive: getPrimitive,
         squeakEpoch: squeakEpoch,
         isSmall: isSmall,
-        smallValue: smallValue
+        smallValue: smallValue,
+        getNextHash: getNextHash
     };
 })();
