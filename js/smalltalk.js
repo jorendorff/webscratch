@@ -214,12 +214,6 @@ var console;
     var nextHash = 0;
 
     defMethods(Object_im, {
-        basicSize: function Object$basicSize() {
-            return getSmallInteger(this.__array.length);
-        },
-        size: function Object$size() {
-            return getSmallInteger(this.__array.length);
-        },
         pointsTo_: function Object$pointsTo_(v) {
             var keys = Object.keys(this);
             for (var i = 0; i < keys.length; i++) {
@@ -486,7 +480,9 @@ var console;
         "    return {1};\n" +
         "}\n");
 
+    // Object#size and Object#basicSize.
     primitives[62] = "return __smalltalk.Integer(this.__array.length);\n";
+
     primitives[70] = "return _Behavior.new.call(this);\n";
 
     // Object#someInstance and Object#nextInstance.
