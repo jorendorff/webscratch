@@ -438,16 +438,14 @@ var console;
     // Object#at: and Object#basicAt:. The real thing accepts LargeInteger and
     // even Float arguments. For now we support SmallIntegers only.
     primitives[60] = (
-        // bug: only works for SmallIntegers.
-        "var $$a = this.__array, $$v = $$a[{0}.__value - 1];\n" +
+        "var $$a = this.__array, $$v = $$a[__smalltalk.toJSIndex({0})];\n" +
         "return ($$a instanceof Uint8Array) ? __smalltalk.Integer($$v) : $$v;\n");
 
     // Object#at:put: and Object#basicAt:put:
     primitives[61] = (
         "var $$a = this.__array;\n" +
         "if ($$a) {\n" +
-        // bug: only works for SmallIntegers.
-        "    var $$i = {0}.__value - 1;\n" +
+        "    var $$i = __smalltalk.toJSIndex({0});\n" +
         "    if ($$a instanceof Uint8Array) {\n" +
         "        assertEq(typeof {1}.__value, 'number');\n" +
         "        $$a[$$i] = {1}.__value;\n" +
@@ -460,13 +458,17 @@ var console;
     // Object#size and Object#basicSize.
     primitives[62] = "return __smalltalk.Integer(this.__array.length);\n";
 
+    // CompiledMethod#objectAt: and CompiledMethod#objectAt:put:.
+    primitives[68] = "throw new Error('CompiledMethod#objectAt:');\n";
+    primitives[69] = "throw new Error('CompiledMethod#objectAt:put:');\n";
+
     // Object#basicNew and Object#basicNew:.
     primitives[70] = "return __smalltalk.basicNew(this);\n";
     primitives[71] = "return __smalltalk.basicNew_(this, {0});\n";
 
     // Object#instVarAt:.
     // bug: only works for SmallIntegers.
-    primitives[73] = "return this[this.__class.__iv[{0}.__value - 1]];\n";
+    primitives[73] = "return this[this.__class.__iv[__smalltalk.toJSIndex({0})]];\n";
 
     // Object#instVarAt:put:.
     // bug: only works for SmallIntegers.
@@ -488,18 +490,28 @@ var console;
     primitives[77] = "throw new Error('Object#someInstance');\n";
     primitives[78] = "throw new Error('Object#nextInstance');\n";
 
-    // Object#perform:withArguments:inSuperclass:
+    // CompiledMethod newMethod:header:.
+    primitives[79] = "throw new Error('CompiledMethod newMethod:header:');\n";
+
+    // BlockContext#valueWithArguments:
+    primitives[82] = (
+        "return this.__fn.apply(null, __smalltalk.toJSArrayReadOnly({0}));\n");
+
+    // Behavior#flushCache.
+    primitives[89] = "return __smalltalk.nil;\n";
+    
+    // Object#perform:withArguments:inSuperclass:.
     primitives[100] = (
         "return {2}.__im[{0}.__str.replace(/:/g, '_')].apply(this, {1}.__array);\n");
 
-    // Object#==
+    // Object#==.
     primitives[110] = (
         "return this === {0} ? __smalltalk.true : __smalltalk.false;");
 
-    // Object#class
+    // Object#class.
     primitives[111] = "return this.__class;\n";
 
-    // primitiveSecondsClock
+    // Time primSecondsClock.
     var squeakEpoch = new Date(1901, 0, 1, 0, 0, 0).getTime() / 1000;
     primitives[137] = (
         "return __smalltalk.Integer(Math.floor(new Date().getTime() / 1000) - __smalltalk.squeakEpoch);\n");
@@ -588,7 +600,7 @@ var console;
         return obj;
     }
 
-    // --- Bootstrap Array class
+    // --- Arrays
     defClass("Collection", classes.Object, {}, {}, [], ['_RandomForPicking']);
     defClass("SequenceableCollection", classes.Collection, {}, {}, [], []);
     defClass("ArrayedCollection", classes.SequenceableCollection, {
@@ -604,6 +616,18 @@ var console;
         var obj = Object.create(Array_im);
         obj.__array = arr;
         return obj;
+    }
+
+    // Quickly get read-only access to the underlying array of a Smalltalk value.
+    function toJSArrayReadOnly(v) {
+        assert("__array" in v, "array expected");
+        return v.__array;
+    }
+
+    function toJSIndex(v) {
+        var i = v.__value - 1;
+        assert((i | 0) === i, 'invalid index');
+        return i;
     }
 
     // --- Booleans
@@ -747,6 +771,8 @@ var console;
         smallValue: smallValue,
         getNextHash: getNextHash,
         basicNew: basicNew,
-        basicNew_: basicNew_
+        basicNew_: basicNew_,
+        toJSArrayReadOnly: toJSArrayReadOnly,
+        toJSIndex: toJSIndex
     };
 })();
