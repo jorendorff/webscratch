@@ -67,7 +67,7 @@
         assert(n.type === "Message");
         return (n.selector.match(/^[A-Za-z]/)
                 ? "." + n.selector.replace(/:/g, "_")
-                : "['" + n.selector + "']");
+                : "['" + n.selector.replace(/\\/g, "\\\\") + "']");
     }
 
     function declareLocals(arr, indent) {
