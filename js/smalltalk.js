@@ -3,7 +3,7 @@
 var SmalltalkRuntime;
 var console;
 
-(function () {
+(function (global) {
     "use strict";
 
     if (typeof console === "undefined") {
@@ -563,7 +563,10 @@ var console;
 
     // Behavior#flushCache.
     primitives[89] = "return __smalltalk.nil;\n";
-    
+
+    // SystemDictionary#snapshotPrimitive.
+    primitives[97] = "throw new Error('SystemDictionary#snapshotPrimitive');\n";
+
     // Object#perform:withArguments:inSuperclass:.
     primitives[100] = (
         "return {2}.__im[{0}.__str.replace(/:/g, '_')].apply(this, {1}.__array);\n");
@@ -574,6 +577,12 @@ var console;
 
     // Object#class.
     primitives[111] = "return this.__class;\n";
+
+    // SystemDictionary#quitPrimitive.
+    primitives[113] = "__smalltalk.quit();\n"
+
+    // SystemDictionary#exitToDebugger.
+    primitives[114] = "debugger;\n";
 
     // Time primSecondsClock.
     var squeakEpoch = new Date(1901, 0, 1, 0, 0, 0).getTime() / 1000;
@@ -770,6 +779,13 @@ var console;
     classes.Symbol._SingleCharSymbols = Array_(symbols);
 
 
+    // --- Other system functions
+    function quitPrimitive() {
+        if (global.quit)
+            global.quit(0);
+        throw new Error("quit");
+    }
+
     // === Exports
 
     SmalltalkRuntime = {
@@ -797,6 +813,7 @@ var console;
         basicNew: basicNew,
         basicNew_: basicNew_,
         toJSArrayReadOnly: toJSArrayReadOnly,
-        toJSIndex: toJSIndex
+        toJSIndex: toJSIndex,
+        quit: quitPrimitive
     };
-})();
+})(this);
