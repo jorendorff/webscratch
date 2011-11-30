@@ -336,12 +336,13 @@
                         assert(msg.type === "Message");
                         if (rcv.type === "Super") {
                             var args = messageJSArgsNoParens(msg, indent2);
-                            var argstr = thisObject();
                             if (args)
-                                argstr += ", " + args;
+                                args = thisObject() + ", " + args;
+                            else
+                                args = thisObject();
                             return "_" + comp.currentClass.superclassName +
                                    (isInstanceMethod ? ".__im" : "") +
-                                   messageJSName(msg) + ".call(" + argstr + ")";
+                                   messageJSName(msg) + ".call(" + args + ")";
                         } else {
                             return translateExpr(rcv, POSTFIX_PREC, indent2) + translateMessage(msg, indent2);
                         }
