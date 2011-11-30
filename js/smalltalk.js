@@ -426,8 +426,19 @@ var console;
 
     function isSmall(v) {
         var cls = v.__class;
-        return (cls === classes.SmallInteger && v.__value > 0) ||
-               (cls === classes.LargePositiveInteger && v.__array.length == 4);
+        if (cls === classes.SmallInteger)
+            return true;
+
+        // Large integers with a value that would fit into an int32 also count as small.
+        if (cls !== classes.LargePositiveInteger && cls !== classes.LargeNegativeInteger)
+            return false;
+        var a = v.__array;
+        if (a.length !== 4)
+            return false;
+        if ((a[3] & 0x80) === 0)
+            return true;
+        return (cls === classes.LargeNegativeInteger &&
+                a[3] === 0x80 && a[2] === 0 && a[1] === 0 && a[0] === 0);
     }
 
     function smallValue(v) {
@@ -435,7 +446,8 @@ var console;
         if (cls === classes.SmallInteger)
             return v.__value;
         var a = v.__array;
-        return a[0] | (a[1] << 8) | (a[2] << 16) | (a[3] << 24);
+        var b = a[0] | (a[1] << 8) | (a[2] << 16) | (a[3] << 24);
+        return cls === classes.LargePositiveInteger ? b : -b;
     }
 
     function bitOp(op) {
@@ -461,9 +473,10 @@ var console;
     primitives["14"] = bitOp("&");
     primitives["15"] = bitOp("|");
     primitives["16"] = bitOp("^");
-    primitives["40"] = ("if ({0}.__class === _SmallInteger)\n" +
+    primitives["40"] = ("if (this.__class === _SmallInteger)\n" +
                         "    return __smalltalk.Float(this.__value);\n");
 
+    primitives["62"] = "return __smalltalk.Integer(this.__array.length);\n";
     primitives["70"] = "return _Behavior.new.call(this);\n";
 
     // primitiveSecondsClock
@@ -473,7 +486,7 @@ var console;
     defClass("SmallInteger", classes.Integer, {
         "*": function (that) {
             return that.__class === SmallInteger_class
-                   ? getInteger(this.__value * that.__value)
+                   ? getInteger(this.__value * that.__value) // XXX BUG probably imprecise
                    : classes.Integer.__im["*"].call(this, that);
         },
         "/": function (that) {
@@ -487,13 +500,13 @@ var console;
                    : classes.Integer.__im["//"].call(this, that);
         },
         "\\\\": function(that) {
-            return this.error_("not implemented: SmallInteger \\\\");
+            return this.error_(getString("not implemented: SmallInteger \\\\"));
         },
         quo_: function (that) {
-            return this.error_("not implemented: SmallInteger quo:");
+            return this.error_(getString("not implemented: SmallInteger quo:"));
         },
         bitShift_: function (that) {
-            return this.error_("not implemented: SmallInteger bitShift:");
+            return this.error_(getString("not implemented: SmallInteger bitShift:"));
         }
     }, {}, [], []);
     var SmallInteger_class = classes.SmallInteger;
