@@ -481,6 +481,13 @@ var console;
         "if (this.__class === _SmallInteger)\n" +
         "    return __smalltalk.Float(this.__value);\n";
 
+    // Float#truncated
+    // JS has Math.{floor,ceil,round}, none of which just truncates the fractional part.
+    // But the built-in ToInt32 primitive does, and we can get that by doing 'f | 0'.
+    primitives[51] =
+        "if (-0x80000000 <= this.__value && this.__value <= 0xffffffff)\n" +
+        "    return __smalltalk.Integer(this.__value | 0);\n";
+
     primitives[62] = "return __smalltalk.Integer(this.__array.length);\n";
     primitives[70] = "return _Behavior.new.call(this);\n";
 

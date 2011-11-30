@@ -10245,7 +10245,8 @@ To run the tests:
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
 runTests
 	self testBasics;
-	     testIntegers
+	     testIntegers;
+	     testPrimitives
 ! !
 
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
@@ -10275,28 +10276,42 @@ testBasics
 testIntegers
 	self check: [(0 bitXor: 1) = 1].
 
-        self check: [(1 bitShift: 4) = 16].
-        self check: [(-1 bitShift: 4) = -16].
-        self check: [(16r12345 bitShift: 12) = 16r12345000].
-
-        "The rest of these need better LargeInteger support."
-        "self check: [(1 bitShift: 31) = 16r80000000]."
-        "self check: [((16rFFFFFFFF bitShift: 4) bitShift: -4) = 16rFFFFFFFF]."
-        "self check: [((16rFFFFFFFF bitShift: -4) bitShift: 4) = 16rFFFFFFF0]."
-        "self check: [(1 bitShift: 32) = 16r100000000]."
-        "self check: [(16rF0000000 bitShift: 4) = 16rF00000000]."
-        "self check: [(16r70000000 bitShift: 4) = 16r700000000]."
-        "self check: [(16rF0000000 bitShift: -4) = 16r0F000000]."
-        "self check: [(16r70000000 bitShift: -4) = 16r07000000]."
-
 	"self check: [16r3FFFFFFF + 1 = 16r40000000]."
 	"self check: [-16r40000000 negate = 16r40000000]."
-        "self check: [(16rF0F0F0F0 bitXor: 16r0F0F0F0F) = 16rFFFFFFFF]."
-        self check: [1 ~= 2].
-        self check: [(0 bitXor: 0) = 0].
+	"self check: [(16rF0F0F0F0 bitXor: 16r0F0F0F0F) = 16rFFFFFFFF]."
+	self check: [1 ~= 2].
+	self check: [(0 bitXor: 0) = 0].
 
 	"this one doesn't work yet -- outside the range of precise integer-valued Numbers."
 	"self check: [16r0123456789ABCDEF0123456789ABCDEF = 1512366075204170929049582354406559215]."
+! !
+
+!HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
+testPrimitives
+	"17: SmallInteger#bitShift:"
+	self check: [(1 bitShift: 4) = 16];
+	     check: [(-1 bitShift: 4) = -16];
+	     check: [(16r12345 bitShift: 12) = 16r12345000].
+	"The rest of these need better LargeInteger support."
+	"     check: [(1 bitShift: 31) = 16r80000000];"
+	"     check: [((16rFFFFFFFF bitShift: 4) bitShift: -4) = 16rFFFFFFFF];"
+	"     check: [((16rFFFFFFFF bitShift: -4) bitShift: 4) = 16rFFFFFFF0];"
+	"     check: [(1 bitShift: 32) = 16r100000000];"
+	"     check: [(16rF0000000 bitShift: 4) = 16rF00000000];"
+	"     check: [(16r70000000 bitShift: 4) = 16r700000000];"
+	"     check: [(16rF0000000 bitShift: -4) = 16r0F000000];"
+	"     check: [(16r70000000 bitShift: -4) = 16r07000000];"
+
+	"51: Float#truncated"
+	self check: [0.125 truncated isMemberOf: SmallInteger];
+	     check: [0.999 truncated = 0];
+	     check: [-0.0 truncated = 0];
+	     check: [-0.999 truncated = 0];
+	     check: [2147483647.5 truncated = 2147483647];
+	     "check: [2147483648.0 truncated = 2147483648];"
+	     "check: [2147483648.5 truncated = 2147483648];"
+	     check: [-2147483647.5 truncated = -2147483647].
+	     "check: [-2147483648.0 truncated = -2147483648];"
 ! !
 
 !HandmadeTests methodsFor: 'support' stamp: 'jto 5/6/2011 19:55'!
