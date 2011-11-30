@@ -513,7 +513,7 @@
                 cd.mark = true;
             }
         }
-        var coreClasses = ['Object', 'Float', 'Character', 'String', 'Symbol'];
+        var coreClasses = ['Object', 'Float', 'Character', 'String', 'Symbol', 'Color'];
         for (var i = 0; i < coreClasses.length; i++)
             write(coreClasses[i]);
         for (var name in classdefs)
