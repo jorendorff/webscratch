@@ -1,7 +1,3 @@
-// Current bug: code for Scratch classes, including "initialize" class method
-// calls, is emitted before "Float initialize". This means that the Float class
-// is uninitialized when that code runs, so stuff like isInfinite doesn't work.
-
 (function () {
     "use strict";
 
@@ -517,6 +513,9 @@
                 cd.mark = true;
             }
         }
+        var coreClasses = ['Object', 'Float', 'Character', 'String', 'Symbol'];
+        for (var i = 0; i < coreClasses.length; i++)
+            write(coreClasses[i]);
         for (var name in classdefs)
             write(name);
 
