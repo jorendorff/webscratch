@@ -1406,6 +1406,54 @@ isVariable
 
 	^ self instSpec >= 2! !
 
+!Behavior methodsFor: 'instance creation'!
+basicNew
+	"Primitive. Answer an instance of the receiver (which is a class) with no 
+	indexable variables. Fail if the class is indexable. Essential. See Object 
+	documentation whatIsAPrimitive."
+
+	<primitive: 70>
+	self isVariable ifTrue: [ ^ self basicNew: 0 ].
+	"space must be low"
+	Smalltalk signalLowSpace.
+	^ self basicNew  "retry if user proceeds"
+! !
+
+!Behavior methodsFor: 'instance creation' stamp: 'di 8/18/2000 22:10'!
+basicNew: sizeRequested 
+	"Primitive. Answer an instance of this class with the number
+	of indexable variables specified by the argument, sizeRequested.
+	Fail if this class is not indexable or if the argument is not a
+	positive Integer, or if there is not enough memory available. 
+	Essential. See Object documentation whatIsAPrimitive."
+
+	<primitive: 71>
+	self isVariable ifFalse:
+		[self error: self printString, ' cannot have variable sized instances'].
+	(sizeRequested isInteger and: [sizeRequested >= 0]) ifTrue:
+		["arg okay; space must be low."
+		Smalltalk signalLowSpace.
+		^ self basicNew: sizeRequested  "retry if user proceeds"].
+	self primitiveFailed! !
+
+!Behavior methodsFor: 'instance creation' stamp: 'di 8/18/2000 20:27'!
+new
+	"Answer a new instance of the receiver (which is a class) with no indexable variables. Fail if the class is indexable."
+
+	<primitive: 70>  "This method runs primitively if successful"
+	^ self basicNew  "Exceptional conditions will be handled in basicNew"
+! !
+
+!Behavior methodsFor: 'instance creation' stamp: 'di 8/18/2000 20:32'!
+new: sizeRequested 
+	"Answer an instance of this class with the number of indexable
+	variables specified by the argument, sizeRequested."
+
+	<primitive: 71>  "This method runs primitively if successful"
+	^ self basicNew: sizeRequested  "Exceptional conditions will be handled in basicNew:"
+! !
+
+
 
 Object subclass: #Boolean
 	instanceVariableNames: ''

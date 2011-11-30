@@ -1,16 +1,19 @@
 // Test: load, compile, and run handmade-test.st.
 
-(function () {
+(function (argv) {
     "use strict";
 
     load("../smalltalk.js");
     load("../parse.js");
     load("../compile.js");
 
+    var dump = argv.length === 1 && argv[0] === "-d";
     try {
         var st = read("handmade-test.st");
         var ast = smalltalk.parseSqueakSource(st);
         var js = smalltalk.translate(ast);
+        if (dump)
+            print(js);
         var initfn = eval(js);
         initfn(SmalltalkRuntime);
 
@@ -20,4 +23,4 @@
         throw exc;
     }
     print("pass");
-})();
+})(arguments);

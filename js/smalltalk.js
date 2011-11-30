@@ -106,13 +106,13 @@ var console;
         }
     }
 
-    function Behavior_basicNew() {
-        var obj = Object.create(this.__im);
-        var iv = this.__iv;
+    function basicNew(cls) {
+        var obj = Object.create(cls.__im);
+        var iv = cls.__iv;
         for (var i = 0, n = iv.length; i < n; i++)
             obj[iv[i]] = nil;
 
-        switch (this.__flags) {
+        switch (cls.__flags) {
         case 0:
             break;
         case 1: case 2: case 3:
@@ -121,7 +121,7 @@ var console;
         case 4: case 6:
             // ByteArrays and LargeIntegers get a byte array.
             // Strings and Symbols get a string.
-            if (this === classes.String || Object.prototype.isPrototypeOf(classes.String.__im, this.__im))
+            if (cls === classes.String || Object.prototype.isPrototypeOf(classes.String.__im, cls.__im))
                 obj.__str = "";
             else
                 obj.__array = new Uint8Array();
@@ -140,22 +140,22 @@ var console;
                         " object to JS number");
     }
 
-    function Behavior_basicNew_(size) {
-        assert(this.__flags != 0,
-               this._name + " cannot have variable sized instances");
-        var obj = Object.create(this.__im);
-        var iv = this.__iv;
+    function basicNew_(cls, size) {
+        assert(cls.__flags != 0,
+               cls._name + " cannot have variable sized instances");
+        var obj = Object.create(cls.__im);
+        var iv = cls.__iv;
         for (var i = 0, n = iv.length; i < n; i++)
             obj[iv[i]] = nil;
 
-        switch (this.__flags) {
+        switch (cls.__flags) {
         case 0:
             break;
         case 1: case 2: case 3:
             obj.__array = Array(toJSNaturalNumber(size));
             break;
         case 4: case 6:
-            if (this === classes.String || Object.prototype.isPrototypeOf(classes.String.__im, this.__im))
+            if (cls === classes.String || Object.prototype.isPrototypeOf(classes.String.__im, cls.__im))
                 obj.__str = Array(toJSNaturalNumber(size) + 1).join("\0");
             else
                 obj.__array = new Uint8Array(toJSNaturalNumber(size));
@@ -173,10 +173,6 @@ var console;
     function noop() { return this; }
 
     defMethods(Behavior_im, {
-        basicNew: Behavior_basicNew,
-        basicNew_: Behavior_basicNew_,
-        "new": Behavior_basicNew,
-        new_: Behavior_basicNew_,
         instSpec: function Behavior$instSpec() {
             return getInteger((this.__flags << 1) |
                               +(this.__flags != 2 && this.__iv.length > 0));
@@ -464,7 +460,9 @@ var console;
     // Object#size and Object#basicSize.
     primitives[62] = "return __smalltalk.Integer(this.__array.length);\n";
 
-    primitives[70] = "return _Behavior.new.call(this);\n";
+    // Object#basicNew and Object#basicNew:.
+    primitives[70] = "return __smalltalk.basicNew(this);\n";
+    primitives[71] = "return __smalltalk.basicNew_(this, {0});\n";
 
     // Object#instVarAt:.
     // bug: only works for SmallIntegers.
@@ -747,6 +745,8 @@ var console;
         squeakEpoch: squeakEpoch,
         isSmall: isSmall,
         smallValue: smallValue,
-        getNextHash: getNextHash
+        getNextHash: getNextHash,
+        basicNew: basicNew,
+        basicNew_: basicNew_
     };
 })();
