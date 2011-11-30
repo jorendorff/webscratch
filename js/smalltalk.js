@@ -279,23 +279,8 @@ var console;
             return this.perform_withArguments_(aSymbol, Array_([arg1, arg2, arg3]));
         },
         perform_withArguments_: function (selector, argArray) {
-            return this.perform_withArguments_inSuperclass(
+            return this.perform_withArguments_inSuperclass_(
                 selector, argArray, this.__class);
-        },
-        perform_withArguments_inSuperclass_: function (selector, argArray, lookupClass) {
-            checkIsSymbol(selector, "selector argument must be a symbol");
-            var name = selector.__value;
-            checkIsMethodName(name);
-            var obj = Object.getPrototypeOf(this);
-            while (obj !== null && obj.__class !== lookupClass)
-                obj = Object.getPrototypeOf(obj);
-            check(obj !== null, "lookupClass is not in my inheritance chain");
-            var fn = obj[name];
-            check(fn, "no such method");
-            assertEq(typeof fn, "function");
-            var args = TO_JS_ARRAY_QUICK_READONLY(argArray);
-            checkEq(fn.length, args.length, "incorrect number of arguments");
-            return fn.apply(this, args);
         },
 
         beep: function Object$beep() {
@@ -475,26 +460,33 @@ var console;
     primitives[16] = bitOp("^");
 
     // SmallInteger#bitShift:
-    primitives[17] = ("if (__smalltalk.isSmall(this) && __smalltalk.isSmall({0})) {\n" +
-                      "    var $0 = __smalltalk.smallValue(this), $1 = __smalltalk.smallValue({0});\n" +
-                      "    if ($1 === 0) {\n" +
-                      "        return this;\n" +
-                      "    } else if ($1 > 0) {\n" +
-                      // This only hits for positive $0. It might be better to test that
-                      // (($0 << $1) >> $1) === $0, i.e. that 32 bits is sufficient to
-                      // represent the result; but I can't be bothered to do the proof.
-                      "        if ($1 < 32 && ($0 & (-1 << (32 - $1))) === 0)\n" +
-                      "            return __smalltalk.Integer($0 << $1);\n" +
-                      "    } else if ($1 > -32) {\n" +
-                      "        return __smalltalk.Integer($0 >> -$1);\n" +
-                      "    }\n" +
-                      "    console.log('oh dear, ' + $0 + ', ' + $1);\n" +
-                      "}\n");
-    primitives[40] = ("if (this.__class === _SmallInteger)\n" +
-                        "    return __smalltalk.Float(this.__value);\n");
+    primitives[17] =
+        "if (__smalltalk.isSmall(this) && __smalltalk.isSmall({0})) {\n" +
+        "    var $0 = __smalltalk.smallValue(this), $1 = __smalltalk.smallValue({0});\n" +
+        "    if ($1 === 0) {\n" +
+        "        return this;\n" +
+        "    } else if ($1 > 0) {\n" +
+        // This only hits for positive $0. It might be better to test that
+        // (($0 << $1) >> $1) === $0, i.e. that 32 bits is sufficient to
+        // represent the result; but I can't be bothered to do the proof.
+        "        if ($1 < 32 && ($0 & (-1 << (32 - $1))) === 0)\n" +
+        "            return __smalltalk.Integer($0 << $1);\n" +
+        "    } else if ($1 > -32) {\n" +
+        "        return __smalltalk.Integer($0 >> -$1);\n" +
+        "    }\n" +
+        "    console.log('oh dear, ' + $0 + ', ' + $1);\n" +
+        "}\n";
+
+    primitives[40] =
+        "if (this.__class === _SmallInteger)\n" +
+        "    return __smalltalk.Float(this.__value);\n";
 
     primitives[62] = "return __smalltalk.Integer(this.__array.length);\n";
     primitives[70] = "return _Behavior.new.call(this);\n";
+
+    // Object#perform:withArguments:inSuperclass:
+    primitives[100] =
+        "return {2}.__im[{0}.__str.replace(/:/g, '_')].apply(this, {1}.__array);\n";
 
     // primitiveSecondsClock
     var squeakEpoch = new Date(1901, 0, 1, 0, 0, 0).getTime() / 1000;

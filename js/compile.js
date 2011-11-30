@@ -1,4 +1,6 @@
-// Current bug: classes aren't initialized, so Array.empty() returns nil.
+// Current bug: code for Scratch classes, including "initialize" class method
+// calls, is emitted before "Float initialize". This means that the Float class
+// is uninitialized when that code runs, so stuff like isInfinite doesn't work.
 
 (function () {
     "use strict";
