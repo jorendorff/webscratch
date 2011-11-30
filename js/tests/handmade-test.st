@@ -9820,14 +9820,14 @@ Object subclass: #HandmadeTests
 !HandmadeTests commentStamp: 'jto 5/1/2011 12:54' prior: 0!
 Tests for the Smalltalk-to-JS compiler.
 
-So far there is only one test. To run it:
-	(HandmadeTests new) testBasics!
+To run the tests:
+	(HandmadeTests new) runTests!
 
 
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
 runTests
-	testBasics
-	testIntegers
+	self testBasics;
+	     testIntegers
 ! !
 
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
@@ -9855,9 +9855,11 @@ testBasics
 
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
 testIntegers
-	self check: [0 bitXor: 1 = 1].
-	self check: [16r3fffffff + 1 = 16r40000000].
-	self check: [-16r40000000 negate = 16r40000000].
+	self check: [(0 bitXor: 1) = 1].
+
+        "these won't pass without LargePositiveInteger and LargeNegativeInteger"
+	"self check: [16r3FFFFFFF + 1 = 16r40000000]."
+	"self check: [-16r40000000 negate = 16r40000000]."
 
 	"this one doesn't work yet -- outside the range of precise integer-valued Numbers."
 	"self check: [16r0123456789ABCDEF0123456789ABCDEF = 1512366075204170929049582354406559215]."

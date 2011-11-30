@@ -14,7 +14,7 @@
         var initfn = eval(js);
         initfn(SmalltalkRuntime);
 
-        SmalltalkRuntime.classes.HandmadeTests.new().testBasics();
+        SmalltalkRuntime.classes.HandmadeTests.new().runTests();
     } catch (exc) {
         print(exc.stack);
         throw exc;
