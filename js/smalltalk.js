@@ -492,12 +492,14 @@ var console;
         "if (-0x80000000 <= this.__value && this.__value <= 0xffffffff)\n" +
         "    return __smalltalk.Integer(this.__value | 0);\n");
 
-    // Object#at:, Object#basicAt:, LargePositiveInteger#digitAt:.
+    // Object#at:, Object#basicAt:, LargePositiveInteger#digitAt:, String#byteAt:.
     primitives[60] = (
         "var $$a = this.__array, $$v = $$a[__smalltalk.toJSIndex({0})];\n" +
         "return ($$a instanceof Uint8Array) ? __smalltalk.Integer($$v) : $$v;\n");
 
     // Object#at:put:, Object#basicAt:put:, LargePositiveInteger#digitAt:put:
+    // (This primitive is also used for String#byteAt:put:, but it always
+    // fails and that is OK; the fallback code is correct.)
     primitives[61] = (
         "var $$a = this.__array;\n" +
         "if ($$a) {\n" +
@@ -514,11 +516,17 @@ var console;
     // Object#size, Object#basicSize, LargePositiveInteger#digitLength.
     primitives[62] = "return __smalltalk.Integer(this.__array.length);\n";
 
+    // String#at: and String#at:put:.
+    primitives[63] = (
+        "return __smalltalk.chars[this.__str.charCodeAt(__smalltalk.toJSIndex({0}))];\n");
+    primitives[64] = (
+        "return __smalltalk.String_at_put_(this, {0}, {1});\n");
+
     // CompiledMethod#objectAt: and CompiledMethod#objectAt:put:.
     primitives[68] = "throw new Error('CompiledMethod#objectAt:');\n";
     primitives[69] = "throw new Error('CompiledMethod#objectAt:put:');\n";
 
-    // Object#basicNew, Object#basicNew:, Interval new.
+    // Object#basicNew and Object#basicNew:. 70 is also used for Interval new.
     primitives[70] = "return __smalltalk.basicNew(this);\n";
     primitives[71] = "return __smalltalk.basicNew_(this, {0});\n";
 
@@ -532,7 +540,7 @@ var console;
         "this[this.__class.__iv[{0}.__value - 1]] = {1};\n" +
         "return {1};\n");
 
-    // Object#identityHash and Object#asOop.
+    // Object#identityHash, Object#asOop, Symbol#hash.
     var nextHash = 0;
     function getNextHash() {
         return getSmallInteger((nextHash = (nextHash + 1) | 0));
@@ -706,31 +714,6 @@ var console;
 
     // --- Strings
     defClass("String", classes.ArrayedCollection, {
-        at_: function String$at_(i) {
-            return chars[this.__str.charCodeAt(i.__value - 1)];
-        },
-        at_put_: function String$at_put_(index, v) {
-            // Check index.
-            if (index.__class !== classes.SmallInteger && !index.isInteger())
-                this.errorNonIntegerIndex();
-            var s = this.__str;
-            assertEq(typeof s, 'string');
-            var i = index.__value - 1;
-            if (i < 0 || i >= s.length)
-                this.errorSubscriptBounds_(index);
-
-            // Check value.
-            var ch;
-            if (v.__class === classes.Character)
-                ch = String.fromCharCode(v._value.__value);
-            else if (v.__class === classes.SmallInteger || v.isInteger())
-                ch = String.fromCharCode(v.__value);
-            else
-                this.error_(getString("Strings only store Characters"));
-
-            this.__str = s.slice(0, i) + ch + s.slice(i + 1);
-            return this;
-        },
         byteAt_: function String$byteAt_(i) {
             return getSmallInteger(this.__str.charCodeAt(i.__value - i));
         },
@@ -742,6 +725,30 @@ var console;
         obj.__str = str;
         return obj;
     }
+
+    function String_at_put_(str, index, v) {
+        // Check index.
+        if (index.__class !== classes.SmallInteger && !index.isInteger())
+            str.errorNonIntegerIndex();
+        var s = str.__str;
+        assertEq(typeof s, 'string');
+        var i = toJSIndex(index);
+        if (i < 0 || i >= s.length)
+            str.errorSubscriptBounds_(index);
+
+        // Check value.
+        var ch;
+        if (v.__class === classes.Character)
+            ch = String.fromCharCode(v._value.__value);
+        else if (v.__class === classes.SmallInteger || v.isInteger())
+            ch = String.fromCharCode(v.__value);
+        else
+            str.error_(getString("Strings only store Characters"));
+
+        str.__str = s.slice(0, i) + ch + s.slice(i + 1);
+        return v;
+    }
+
 
     // --- Symbols
     defClass("Symbol", classes.String, {}, {}, [], [], 4);
@@ -772,6 +779,7 @@ var console;
         false: false_,
         chars: chars,
         String: getString,
+        String_at_put_: String_at_put_,
         Symbol: Symbol,
         Float: getFloat,
         SmallInteger: getSmallInteger,
