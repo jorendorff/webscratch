@@ -9,12 +9,15 @@
     var POSTFIX_PREC = 2;
 
     var jsReservedWords = {
-        break: 1, case: 1, catch: 1, class: 1, const: 1, continue: 1,
-        debugger: 1, default: 1, delete: 1, do: 1, else: 1, enum: 1,
-        export: 1, extends: 1, false: 1, finally: 1, for: 1, function: 1,
-        if: 1, import: 1, in: 1, instanceof: 1, let: 1, new: 1, null: 1,
-        return: 1, super: 1, switch: 1, this: 1, throw: 1, true: 1,
-        try: 1, typeof: 1, var: 1, void: 1, while: 1, with: 1};
+        arguments: 1, break: 1, case: 1, catch: 1, class: 1, const: 1,
+        continue: 1, debugger: 1, default: 1, delete: 1, do: 1, else: 1,
+        enum: 1, export: 1, extends: 1, false: 1, finally: 1, for: 1,
+        function: 1, if: 1, implements: 1, import: 1, in: 1, instanceof: 1,
+        interface: 1, let: 1, new: 1, null: 1, package: 1, private: 1,
+        protected: 1, public: 1, return: 1, static: 1, super: 1, switch: 1,
+        this: 1, throw: 1, true: 1, try: 1, typeof: 1, var: 1, void: 1,
+        while: 1, with: 1
+    };
 
     function toJSName(id) {
         return jsReservedWords.hasOwnProperty(id) ? id + "_" : id;
@@ -333,10 +336,12 @@
                         assert(msg.type === "Message");
                         if (rcv.type === "Super") {
                             var args = messageJSArgsNoParens(msg, indent2);
-                            args = args ? "this, " + args : "this";
+                            var argstr = thisObject();
+                            if (args)
+                                argstr += ", " + args;
                             return "_" + comp.currentClass.superclassName +
                                    (isInstanceMethod ? ".__im" : "") +
-                                   messageJSName(msg) + ".call(" + args + ")";
+                                   messageJSName(msg) + ".call(" + argstr + ")";
                         } else {
                             return translateExpr(rcv, POSTFIX_PREC, indent2) + translateMessage(msg, indent2);
                         }
