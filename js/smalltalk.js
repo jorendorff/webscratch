@@ -461,23 +461,40 @@ var console;
                 "    return this.__value " + op + " {0}.__value ? __smalltalk.true : __smalltalk.false;\n");
     }
 
-    primitives["1"] = numOp("+");  // primitiveAdd
-    primitives["2"] = numOp("-");
-    primitives["3"] = cmpOp("<");
-    primitives["4"] = cmpOp(">");
-    primitives["5"] = cmpOp("<=");
-    primitives["6"] = cmpOp(">=");
-    primitives["7"] = cmpOp("===");
-    primitives["8"] = cmpOp("!==");
-    //primitives["9"] = numOp("*");  // this is no good, could be inaccurate
-    primitives["14"] = bitOp("&");
-    primitives["15"] = bitOp("|");
-    primitives["16"] = bitOp("^");
-    primitives["40"] = ("if (this.__class === _SmallInteger)\n" +
+    primitives[1] = numOp("+");  // primitiveAdd
+    primitives[2] = numOp("-");
+    primitives[3] = cmpOp("<");
+    primitives[4] = cmpOp(">");
+    primitives[5] = cmpOp("<=");
+    primitives[6] = cmpOp(">=");
+    primitives[7] = cmpOp("===");
+    primitives[8] = cmpOp("!==");
+    //primitives[9] = numOp("*");  // this is no good, could be inaccurate
+    primitives[14] = bitOp("&");
+    primitives[15] = bitOp("|");
+    primitives[16] = bitOp("^");
+
+    // SmallInteger#bitShift:
+    primitives[17] = ("if (__smalltalk.isSmall(this) && __smalltalk.isSmall({0})) {\n" +
+                      "    var $0 = __smalltalk.smallValue(this), $1 = __smalltalk.smallValue({0});\n" +
+                      "    if ($1 === 0) {\n" +
+                      "        return this;\n" +
+                      "    } else if ($1 > 0) {\n" +
+                      // This only hits for positive $0. It might be better to test that
+                      // (($0 << $1) >> $1) === $0, i.e. that 32 bits is sufficient to
+                      // represent the result; but I can't be bothered to do the proof.
+                      "        if ($1 < 32 && ($0 & (-1 << (32 - $1))) === 0)\n" +
+                      "            return __smalltalk.Integer($0 << $1);\n" +
+                      "    } else if ($1 > -32) {\n" +
+                      "        return __smalltalk.Integer($0 >> -$1);\n" +
+                      "    }\n" +
+                      "    console.log('oh dear, ' + $0 + ', ' + $1);\n" +
+                      "}\n");
+    primitives[40] = ("if (this.__class === _SmallInteger)\n" +
                         "    return __smalltalk.Float(this.__value);\n");
 
-    primitives["62"] = "return __smalltalk.Integer(this.__array.length);\n";
-    primitives["70"] = "return _Behavior.new.call(this);\n";
+    primitives[62] = "return __smalltalk.Integer(this.__array.length);\n";
+    primitives[70] = "return _Behavior.new.call(this);\n";
 
     // primitiveSecondsClock
     var squeakEpoch = new Date(1901, 0, 1, 0, 0, 0).getTime() / 1000;
@@ -505,9 +522,6 @@ var console;
         quo_: function (that) {
             return this.error_(getString("not implemented: SmallInteger quo:"));
         },
-        bitShift_: function (that) {
-            return this.error_(getString("not implemented: SmallInteger bitShift:"));
-        }
     }, {}, [], []);
     var SmallInteger_class = classes.SmallInteger;
     var SmallInteger_im = SmallInteger_class.__im;

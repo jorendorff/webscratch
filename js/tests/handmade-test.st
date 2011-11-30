@@ -5354,6 +5354,424 @@ Float initialize!
 
 
 
+
+Integer variableByteSubclass: #LargePositiveInteger
+	instanceVariableNames: ''
+	classVariableNames: ''
+	poolDictionaries: ''
+	category: 'Kernel-Numbers'!
+!LargePositiveInteger commentStamp: '<historical>' prior: 0!
+I represent positive integers of more than 30 bits (ie, >= 1073741824).  These values are beyond the range of SmallInteger, and are encoded here as an array of 8-bit digits.  Care must be taken, when new values are computed, that any result that COULD BE a SmallInteger IS a SmallInteger (see normalize).
+
+Note that the bit manipulation primitives, bitAnd:, bitShift:, etc., = and ~= run without failure (and therefore fast) if the value fits in 32 bits.  This is a great help to the simulator.!
+
+
+!LargePositiveInteger methodsFor: 'arithmetic'!
+* anInteger 
+	"Primitive. Multiply the receiver by the argument and answer with an
+	Integer result. Fail if either the argument or the result is not a
+	SmallInteger or a LargePositiveInteger less than 2-to-the-30th (1073741824). Optional. See
+	Object documentation whatIsAPrimitive. "
+
+	<primitive: 29>
+	^super * anInteger! !
+
+!LargePositiveInteger methodsFor: 'arithmetic'!
++ anInteger 
+	"Primitive. Add the receiver to the argument and answer with an
+	Integer result. Fail if either the argument or the result is not a
+	SmallInteger or a LargePositiveInteger less than 2-to-the-30th (1073741824). Optional. See
+	Object documentation whatIsAPrimitive."
+
+	<primitive: 21>
+	^super + anInteger! !
+
+!LargePositiveInteger methodsFor: 'arithmetic'!
+- anInteger 
+	"Primitive. Subtract the argument from the receiver and answer with an
+	Integer result. Fail if either the argument or the result is not a
+	SmallInteger or a LargePositiveInteger less than 2-to-the-30th (1073741824). Optional. See
+	Object documentation whatIsAPrimitive."
+
+	<primitive: 22>
+	^super - anInteger! !
+
+!LargePositiveInteger methodsFor: 'arithmetic'!
+/ anInteger 
+	"Primitive. Divide the receiver by the argument and answer with the
+	result if the division is exact. Fail if the result is not a whole integer.
+	Fail if the argument is 0. Fail if either the argument or the result is not
+	a SmallInteger or a LargePositiveInteger less than 2-to-the-30th (1073741824). Optional. See
+	Object documentation whatIsAPrimitive. "
+
+	<primitive: 30>
+	^super / anInteger! !
+
+!LargePositiveInteger methodsFor: 'arithmetic'!
+// anInteger 
+	"Primitive. Divide the receiver by the argument and return the result.
+	Round the result down towards negative infinity to make it a whole
+	integer. Fail if the argument is 0. Fail if either the argument or the
+	result is not a SmallInteger or a LargePositiveInteger less than 2-to-the-30th (1073741824).
+	Optional. See Object documentation whatIsAPrimitive. "
+
+	<primitive: 32>
+	^super // anInteger! !
+
+!LargePositiveInteger methodsFor: 'arithmetic'!
+\\ anInteger 
+	"Primitive. Take the receiver modulo the argument. The result is the
+	remainder rounded towards negative infinity, of the receiver divided
+	by the argument. Fail if the argument is 0. Fail if either the argument
+	or the result is not a SmallInteger or a LargePositiveInteger less than
+	2-to-the-30th (1073741824). Optional. See Object documentation whatIsAPrimitive."
+
+	<primitive: 31>
+	^super \\ anInteger! !
+
+!LargePositiveInteger methodsFor: 'arithmetic' stamp: 'RAA 5/31/2000 13:21'!
+\\\ anInteger 
+	"a faster modulo method for use in DSA. Be careful if you try to use this elsewhere"
+
+	^(self digitDiv: anInteger neg: false) second! !
+
+!LargePositiveInteger methodsFor: 'arithmetic'!
+abs! !
+
+!LargePositiveInteger methodsFor: 'arithmetic'!
+negated 
+	^ (self copyto: (LargeNegativeInteger new: self digitLength))
+		normalize  "Need to normalize to catch SmallInteger minVal"! !
+
+!LargePositiveInteger methodsFor: 'arithmetic'!
+quo: anInteger 
+	"Primitive. Divide the receiver by the argument and return the result.
+	Round the result down towards zero to make it a whole integer. Fail if
+	the argument is 0. Fail if either the argument or the result is not a
+	SmallInteger or a LargePositiveInteger less than 2-to-the-30th (1073741824). Optional. See
+	Object documentation whatIsAPrimitive."
+
+	<primitive: 33>
+	^super quo: anInteger! !
+
+
+!LargePositiveInteger methodsFor: 'bit manipulation'!
+bitAnd: anInteger 
+	"Primitive. Answer an Integer whose bits are the logical AND of the
+	receiver's bits and those of the argument. Fail if the receiver or argument
+	is greater than 32 bits. See Object documentation whatIsAPrimitive."
+	<primitive: 14>
+	^ super bitAnd: anInteger! !
+
+!LargePositiveInteger methodsFor: 'bit manipulation'!
+bitOr: anInteger 
+	"Primitive. Answer an Integer whose bits are the logical OR of the
+	receiver's bits and those of the argument. Fail if the receiver or argument
+	is greater than 32 bits. See Object documentation whatIsAPrimitive."
+	<primitive: 15>
+	^ super bitOr: anInteger! !
+
+!LargePositiveInteger methodsFor: 'bit manipulation'!
+bitShift: anInteger 
+	"Primitive. Answer an Integer whose value (in twos-complement 
+	representation) is the receiver's value (in twos-complement
+	representation) shifted left by the number of bits indicated by the
+	argument. Negative arguments shift right. Zeros are shifted in from the
+	right in left shifts. The sign bit is extended in right shifts.
+	Fail if the receiver or result is greater than 32 bits.
+	See Object documentation whatIsAPrimitive."
+	<primitive: 17>
+	^super bitShift: anInteger! !
+
+!LargePositiveInteger methodsFor: 'bit manipulation'!
+bitXor: anInteger 
+	"Primitive. Answer an Integer whose bits are the logical XOR of the
+	receiver's bits and those of the argument. Fail if the receiver or argument
+	is greater than 32 bits. See Object documentation whatIsAPrimitive."
+	<primitive: 16>
+	^ super bitXor: anInteger! !
+
+!LargePositiveInteger methodsFor: 'bit manipulation' stamp: 'sr 6/8/2000 02:11'!
+highBit
+	"Answer the index of the high order bit of the receiver, or zero if the  
+	receiver is zero. Raise an error if the receiver is negative, since  
+	negative integers are defined to have an infinite number of leading 1's 
+	in 2's-complement arithmetic. Use >>highBitOfMagnitude if you want to  
+	get the highest bit of the magnitude."
+	^ self highBitOfMagnitude! !
+
+!LargePositiveInteger methodsFor: 'bit manipulation' stamp: 'sr 6/8/2000 02:15'!
+highBitOfMagnitude
+	"Answer the index of the high order bit of the magnitude of the  
+	receiver, or zero if the receiver is zero.  
+	This method is used for LargeNegativeIntegers as well,  
+	since Squeak's LargeIntegers are sign/magnitude."
+	| realLength lastDigit |
+	realLength _ self digitLength.
+	[(lastDigit _ self digitAt: realLength) = 0]
+		whileTrue: [(realLength _ realLength - 1) = 0 ifTrue: [^ 0]].
+	^ lastDigit highBitOfPositiveReceiver + (8 * (realLength - 1))! !
+
+
+!LargePositiveInteger methodsFor: 'testing' stamp: 'di 4/23/1998 11:18'!
+negative
+	"Answer whether the receiver is mathematically negative."
+
+	^ false! !
+
+!LargePositiveInteger methodsFor: 'testing' stamp: 'jm 3/27/98 06:19'!
+sign
+	"Optimization. Answer 1 since receiver is greater than 0."
+
+	^ 1
+! !
+
+
+!LargePositiveInteger methodsFor: 'comparing'!
+< anInteger 
+	"Primitive. Compare the receiver with the argument and answer true if
+	the receiver is less than the argument. Otherwise answer false. Fail if the
+	argument is not a SmallInteger or a LargePositiveInteger less than 2-to-the-30th (1073741824).
+	Optional. See Object documentation whatIsAPrimitive."
+
+	<primitive: 23>
+	^super < anInteger! !
+
+!LargePositiveInteger methodsFor: 'comparing'!
+<= anInteger 
+	"Primitive. Compare the receiver with the argument and answer true if
+	the receiver is less than or equal to the argument. Otherwise answer false.
+	Fail if the argument is not a SmallInteger or a LargePositiveInteger less
+	than 2-to-the-30th (1073741824). Optional. See Object documentation whatIsAPrimitive."
+
+	<primitive: 25>
+	^super <= anInteger! !
+
+!LargePositiveInteger methodsFor: 'comparing'!
+= anInteger 
+	"Primitive. Compare the receiver with the argument and answer true if
+	the receiver is equal to the argument. Otherwise answer false. Fail if the
+	receiver or argument is negative or greater than 32 bits.
+	Optional. See Object documentation whatIsAPrimitive."
+
+	<primitive: 7>
+	^ super = anInteger! !
+
+!LargePositiveInteger methodsFor: 'comparing'!
+> anInteger 
+	"Primitive. Compare the receiver with the argument and answer true if
+	the receiver is greater than the argument. Otherwise answer false. Fail if
+	the argument is not a SmallInteger or a LargePositiveInteger less than
+	2-to-the-30th (1073741824). Optional. See Object documentation whatIsAPrimitive."
+
+	<primitive: 24>
+	^super > anInteger! !
+
+!LargePositiveInteger methodsFor: 'comparing'!
+>= anInteger 
+	"Primitive. Compare the receiver with the argument and answer true if
+	the receiver is greater than or equal to the argument. Otherwise answer
+	false. Fail if the argument is not a SmallInteger or a LargePositiveInteger
+	less than 2-to-the-30th (1073741824). Optional. See Object documentation whatIsAPrimitive."
+
+	<primitive: 26>
+	^super >= anInteger! !
+
+!LargePositiveInteger methodsFor: 'comparing'!
+~= anInteger 
+	"Primitive. Compare the receiver with the argument and answer true if
+	the receiver is equal to the argument. Otherwise answer false. Fail if the
+	receiver or argument is negative or greater than 32 bits.
+	Optional. See Object documentation whatIsAPrimitive."
+
+	<primitive: 8>
+	^ super ~= anInteger! !
+
+
+!LargePositiveInteger methodsFor: 'converting' stamp: 'ar 5/17/2000 16:09'!
+normalize
+	"Check for leading zeroes and return shortened copy if so"
+	| sLen val len oldLen |
+	<primitive: 'primNormalizePositive' module:'LargeIntegers'>
+	"First establish len = significant length"
+	len _ oldLen _ self digitLength.
+	[len = 0 ifTrue: [^0].
+	(self digitAt: len) = 0]
+		whileTrue: [len _ len - 1].
+
+	"Now check if in SmallInteger range"
+	sLen _ SmallInteger maxVal digitLength.
+	(len <= sLen
+		and: [(self digitAt: sLen) <= (SmallInteger maxVal digitAt: sLen)])
+		ifTrue: ["If so, return its SmallInt value"
+				val _ 0.
+				len to: 1 by: -1 do:
+					[:i | val _ (val *256) + (self digitAt: i)].
+				^ val].
+
+	"Return self, or a shortened copy"
+	len < oldLen
+		ifTrue: [^ self growto: len]
+		ifFalse: [^ self]! !
+
+
+!LargePositiveInteger methodsFor: 'system primitives' stamp: 'tk 3/24/1999 20:28'!
+digitAt: index 
+	"Primitive. Answer the value of an indexable field in the receiver.   LargePositiveInteger uses bytes of base two number, and each is a 'digit' base 256.  Fail if the argument (the index) is not an Integer or is out of bounds. Essential.  See Object documentation whatIsAPrimitive."
+
+	<primitive: 60>
+	self digitLength < index
+		ifTrue: [^0]
+		ifFalse: [^super at: index]! !
+
+!LargePositiveInteger methodsFor: 'system primitives'!
+digitAt: index put: value 
+	"Primitive. Store the second argument (value) in the indexable field of 
+	the receiver indicated by index. Fail if the value is negative or is larger 
+	than 255. Fail if the index is not an Integer or is out of bounds. Answer 
+	the value that was stored. Essential. See Object documentation 
+	whatIsAPrimitive."
+
+	<primitive: 61>
+	^super at: index put: value! !
+
+!LargePositiveInteger methodsFor: 'system primitives'!
+digitLength
+	"Primitive. Answer the number of indexable fields in the receiver. This 
+	value is the same as the largest legal subscript. Essential. See Object 
+	documentation whatIsAPrimitive."
+
+	<primitive: 62>
+	self primitiveFailed! !
+
+!LargePositiveInteger methodsFor: 'system primitives'!
+replaceFrom: start to: stop with: replacement startingAt: repStart 
+	"Primitive. This destructively replaces elements from start to stop in the receiver starting at index, repStart, in the collection, replacement. Answer the receiver. Range checks are performed in the primitive only. Optional. See Object documentation whatIsAPrimitive."
+	<primitive: 105>
+	^ super replaceFrom: start to: stop with: replacement startingAt: repStart! !
+
+"-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!
+
+LargePositiveInteger class
+	instanceVariableNames: ''!
+
+!LargePositiveInteger class methodsFor: 'testing'!
+test: n  "Time millisecondsToRun: [LargePositiveInteger test: 100] 1916"
+	| f f1 |
+	"Test and time mult, div, add, subtract"
+	f _ n factorial.
+	f1 _ f*(n+1).
+	n timesRepeat: [f1 _ f1 - f].
+	f1 = f ifFalse: [self halt].
+	n timesRepeat: [f1 _ f1 + f].
+	f1 // f = (n+1) ifFalse: [self halt].
+	f1 negated = (Number readFrom: '-' , f1 printString) ifFalse: [self halt].
+
+	"Check normalization and conversion to/from SmallInts"
+	(SmallInteger maxVal + 1 - 1) == SmallInteger maxVal ifFalse: [self halt].
+	(SmallInteger maxVal + 3 - 6) == (SmallInteger maxVal-3) ifFalse: [self halt].
+	(SmallInteger minVal - 1 + 1) == SmallInteger minVal ifFalse: [self halt].
+	(SmallInteger minVal - 3 + 6) == (SmallInteger minVal+3) ifFalse: [self halt].
+
+	"Check bitShift from and back to SmallInts"
+	1 to: 257 do: [:i | ((i bitShift: i) bitShift: 0-i) == i ifFalse: [self halt]].
+! !
+
+!LargePositiveInteger class methodsFor: 'testing' stamp: 'sr 6/10/2000 18:24'!
+testTwoComplementRightShift
+	"self testTwoComplementRightShift"
+	| large small |
+	small _ 2 << 16.
+	large _ 2 << 32.
+	"2-complement test"
+	(small negated bitShift: -1) ~= ((small + 1) negated bitShift: -1)
+		== ((large negated bitShift: -1) ~= ((large + 1) negated bitShift: -1))
+		ifFalse: [^ self inform: 'ERROR: Two-complement shifts of negative Integers are NOT consistent!!'].
+	(small bitShift: -1) ~= (small + 1 bitShift: -1)
+		== ((large bitShift: -1) ~= (large + 1 bitShift: -1))
+		ifFalse: [^ self inform: 'ERROR: Two-complement shifts of negative Integers are NOT consistent!!'].
+	^ self inform: 'OK: Two-complement shifts of negative Integers are consistent!!'.! !
+
+
+LargePositiveInteger variableByteSubclass: #LargeNegativeInteger
+	instanceVariableNames: ''
+	classVariableNames: ''
+	poolDictionaries: ''
+	category: 'Kernel-Numbers'!
+!LargeNegativeInteger commentStamp: '<historical>' prior: 0!
+Just like LargePositiveInteger, but represents a negative number.!
+
+
+!LargeNegativeInteger methodsFor: 'arithmetic'!
+abs
+	^ self negated! !
+
+!LargeNegativeInteger methodsFor: 'arithmetic'!
+negated
+	^ self copyto: (LargePositiveInteger new: self digitLength)! !
+
+
+!LargeNegativeInteger methodsFor: 'bit manipulation' stamp: 'sr 6/8/2000 02:10'!
+highBit
+	"Answer the index of the high order bit of the receiver, or zero if the  
+	receiver is zero. Raise an error if the receiver is negative, since  
+	negative integers are defined to have an infinite number of leading 1's 
+	in 2's-complement arithmetic. Use >>highBitOfMagnitude if you want to  
+	get the highest bit of the magnitude."
+
+	^ self shouldNotImplement! !
+
+
+!LargeNegativeInteger methodsFor: 'converting' stamp: 'ar 5/17/2000 16:10'!
+normalize
+	"Check for leading zeroes and return shortened copy if so"
+	| sLen val len oldLen minVal |
+	<primitive: 'primNormalizeNegative' module:'LargeIntegers'>
+	"First establish len = significant length"
+	len _ oldLen _ self digitLength.
+	[len = 0 ifTrue: [^0].
+	(self digitAt: len) = 0]
+		whileTrue: [len _ len - 1].
+
+	"Now check if in SmallInteger range"
+	sLen _ 4  "SmallInteger minVal digitLength".
+	len <= sLen ifTrue:
+		[minVal _ SmallInteger minVal.
+		(len < sLen
+			or: [(self digitAt: sLen) < minVal lastDigit])
+			ifTrue: ["If high digit less, then can be small"
+					val _ 0.
+					len to: 1 by: -1 do:
+						[:i | val _ (val *256) - (self digitAt: i)].
+					^ val].
+		1 to: sLen do:  "If all digits same, then = minVal"
+			[:i | (self digitAt: i) = (minVal digitAt: i)
+					ifFalse: ["Not so; return self shortened"
+							len < oldLen
+								ifTrue: [^ self growto: len]
+								ifFalse: [^ self]]].
+		^ minVal].
+
+	"Return self, or a shortened copy"
+	len < oldLen
+		ifTrue: [^ self growto: len]
+		ifFalse: [^ self]! !
+
+
+!LargeNegativeInteger methodsFor: 'testing' stamp: 'di 4/23/1998 11:18'!
+negative
+	"Answer whether the receiver is mathematically negative."
+
+	^ true! !
+
+!LargeNegativeInteger methodsFor: 'testing' stamp: 'jm 3/27/98 06:19'!
+sign
+	"Optimization. Answer -1 since receiver is less than 0."
+
+	^ -1
+! !
+
+
 Object subclass: #Collection
 	instanceVariableNames: ''
 	classVariableNames: ''
@@ -9857,9 +10275,25 @@ testBasics
 testIntegers
 	self check: [(0 bitXor: 1) = 1].
 
-        "these won't pass without LargePositiveInteger and LargeNegativeInteger"
+        self check: [(1 bitShift: 4) = 16].
+        self check: [(-1 bitShift: 4) = -16].
+        self check: [(16r12345 bitShift: 12) = 16r12345000].
+
+        "The rest of these need better LargeInteger support."
+        "self check: [(1 bitShift: 31) = 16r80000000]."
+        "self check: [((16rFFFFFFFF bitShift: 4) bitShift: -4) = 16rFFFFFFFF]."
+        "self check: [((16rFFFFFFFF bitShift: -4) bitShift: 4) = 16rFFFFFFF0]."
+        "self check: [(1 bitShift: 32) = 16r100000000]."
+        "self check: [(16rF0000000 bitShift: 4) = 16rF00000000]."
+        "self check: [(16r70000000 bitShift: 4) = 16r700000000]."
+        "self check: [(16rF0000000 bitShift: -4) = 16r0F000000]."
+        "self check: [(16r70000000 bitShift: -4) = 16r07000000]."
+
 	"self check: [16r3FFFFFFF + 1 = 16r40000000]."
 	"self check: [-16r40000000 negate = 16r40000000]."
+        "self check: [(16rF0F0F0F0 bitXor: 16r0F0F0F0F) = 16rFFFFFFFF]."
+        self check: [1 ~= 2].
+        self check: [(0 bitXor: 0) = 0].
 
 	"this one doesn't work yet -- outside the range of precise integer-valued Numbers."
 	"self check: [16r0123456789ABCDEF0123456789ABCDEF = 1512366075204170929049582354406559215]."
