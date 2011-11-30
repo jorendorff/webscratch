@@ -428,6 +428,42 @@ var console;
         "if (this.__class === _SmallInteger)\n" +
         "    return __smalltalk.Float(this.__value);\n");
 
+    // Float#+ and #-.
+    primitives[41] = (
+        "if ({0}.__class === _Float)\n" +
+        "    return __smalltalk.Float(this.__value + {0}.__value);\n");
+    primitives[42] = (
+        "if ({0}.__class === _Float)\n" +
+        "    return __smalltalk.Float(this.__value - {0}.__value);\n");
+
+    // Float#<, #>, #<=, #>=, #=, #~=.
+    primitives[43] = (
+        "if ({0}.__class === _Float)\n" +
+        "    return this.__value < {0}.__value ? __smalltalk.true : __smalltalk.false;\n");
+    primitives[44] = (
+        "if ({0}.__class === _Float)\n" +
+        "    return this.__value > {0}.__value ? __smalltalk.true : __smalltalk.false;\n");
+    primitives[45] = (
+        "if ({0}.__class === _Float)\n" +
+        "    return this.__value <= {0}.__value ? __smalltalk.true : __smalltalk.false;\n");
+    primitives[46] = (
+        "if ({0}.__class === _Float)\n" +
+        "    return this.__value >= {0}.__value ? __smalltalk.true : __smalltalk.false;\n");
+    primitives[47] = (
+        "if ({0}.__class === _Float)\n" +
+        "    return this.__value === {0}.__value ? __smalltalk.true : __smalltalk.false;\n");
+    primitives[48] = (
+        "if ({0}.__class === _Float)\n" +
+        "    return this.__value !== {0}.__value ? __smalltalk.true : __smalltalk.false;\n");
+
+    // Float#* and #/.
+    primitives[49] = (
+        "if ({0}.__class === _Float)\n" +
+        "    return __smalltalk.Float(this.__value * {0}.__value);\n");
+    primitives[50] = (
+        "if ({0}.__class === _Float && {0}.__value !== 0)\n" +
+        "    return __smalltalk.Float(this.__value / {0}.__value);\n");
+
     // Float#truncated
     // JS has Math.{floor,ceil,round}, none of which just truncates the fractional part.
     // But the built-in ToInt32 primitive does, and we can get that by doing 'f | 0'.
@@ -435,13 +471,12 @@ var console;
         "if (-0x80000000 <= this.__value && this.__value <= 0xffffffff)\n" +
         "    return __smalltalk.Integer(this.__value | 0);\n");
 
-    // Object#at: and Object#basicAt:. The real thing accepts LargeInteger and
-    // even Float arguments. For now we support SmallIntegers only.
+    // Object#at:, Object#basicAt:, LargePositiveInteger#digitAt:.
     primitives[60] = (
         "var $$a = this.__array, $$v = $$a[__smalltalk.toJSIndex({0})];\n" +
         "return ($$a instanceof Uint8Array) ? __smalltalk.Integer($$v) : $$v;\n");
 
-    // Object#at:put: and Object#basicAt:put:
+    // Object#at:put:, Object#basicAt:put:, LargePositiveInteger#digitAt:put:
     primitives[61] = (
         "var $$a = this.__array;\n" +
         "if ($$a) {\n" +
@@ -455,7 +490,7 @@ var console;
         "    return {1};\n" +
         "}\n");
 
-    // Object#size and Object#basicSize.
+    // Object#size, Object#basicSize, LargePositiveInteger#digitLength.
     primitives[62] = "return __smalltalk.Integer(this.__array.length);\n";
 
     // CompiledMethod#objectAt: and CompiledMethod#objectAt:put:.
@@ -546,46 +581,6 @@ var console;
     }
 
     defClass("Float", classes.Number, {
-        "*": function (that) {
-            that = that.__class === Float_class ? that : that.asFloat();
-            return getFloat(this.__value * that.__value);
-        },
-        "+": function (that) {
-            that = that.__class === Float_class ? that : that.asFloat();
-            return getFloat(this.__value + that.__value);
-        },
-        "-": function (that) {
-            that = that.__class === Float_class ? that : that.asFloat();
-            return getFloat(this.__value - that.__value);
-        },
-        "/": function (that) {
-            that = that.__class === Float_class ? that : that.asFloat();
-            return getFloat(this.__value / that.__value);
-        },
-        "<": function (that) {
-            that = that.__class === Float_class ? that : that.asFloat();
-            return this.__value < that.__value ? true_ : false_;
-        },
-        "<=": function (that) {
-            that = that.__class === Float_class ? that : that.asFloat();
-            return this.__value <= that.__value ? true_ : false_;
-        },
-        "=": function (that) {
-            that = that.__class === Float_class ? that : that.asFloat();
-            return this.__value === that.__value ? true_ : false_;
-        },
-        ">": function (that) {
-            that = that.__class === Float_class ? that : that.asFloat();
-            return this.__value > that.__value ? true_ : false_;
-        },
-        ">=": function (that) {
-            that = that.__class === Float_class ? that : that.asFloat();
-            return this.__value >= that.__value ? true_ : false_;
-        },
-        "~=": function (that) {
-            that = that.__class === Float_class ? that : that.asFloat();
-            return this.__value !== that.__value ? true_ : false_;
-        },
         arcTan: function () { return getFloat(Math.atan(this.__value)); },
         exp:    function () { return getFloat(Math.exp(this.__value)); },
         ln:     function () { return getFloat(Math.log(this.__value)); },
