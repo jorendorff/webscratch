@@ -10293,6 +10293,7 @@ To run the tests:
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
 runTests
 	self testBasics;
+	     testCompilerSelf;
 	     testIdentifiers;
 	     testIntegers;
 	     testPrimitives
@@ -10318,7 +10319,15 @@ testBasics
 	self check: [{1} isEmpty not].
 	self check: [{1. 2. 3. 3. 5. 7. 12} isSorted].
 	self check: [{1. 2. 3. 3. 5. 4. 12} isSorted not].
+! !
 
+!HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
+testCompilerSelf
+	"test compiler support for the 'self' keyword"
+	|x|
+ 
+	x _ ({1} at: 1 put: self; at: 1).
+	self check: [x == self].
 ! !
 
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
@@ -10385,16 +10394,16 @@ testPrimitives
 	self check: [({14 . 92} at: 2) = 92];
 	     check: [((ByteArray new: 5) at: 5) = 0].
 
-        "61: Object#at:put: / Object#basicAt:put:"
-        self check: [ :a |
-                a _ {0 . 0}.
-                a at: 1 put: 3.
-                a basicAt: 2 put: 7.
-                (a at: 1) = 3 and: [(a at: 2) = 7].
-             ].
+	"61: Object#at:put: / Object#basicAt:put:"
+	self check: [ :a |
+		a _ {0 . 0}.
+		a at: 1 put: 3.
+		a basicAt: 2 put: 7.
+		(a at: 1) = 3 and: [(a at: 2) = 7].
+	     ].
 
-        "71: Object#basicNew:"
-        self check: [((Array new: 5) at: 1) == nil].
+	"71: Object#basicNew:"
+	self check: [((Array new: 5) at: 1) == nil].
 ! !
 
 !HandmadeTests methodsFor: 'support' stamp: 'jto 5/6/2011 19:55'!

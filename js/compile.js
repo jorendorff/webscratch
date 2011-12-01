@@ -1,3 +1,5 @@
+// Current bug: self doesn't work in cascade expressions.
+
 (function () {
     "use strict";
 
@@ -195,8 +197,8 @@
             var methodRequiresAnswer = false;
 
             // This is nonzero if the innermost surrounding JS function is
-            // a block, not the method.
-            var inBlock = 0;
+            // a block or cascade lambda, not the method.
+            var inLambda = 0;
 
             function translateBody(b) {
                 assert(b.type === "ExprSeq");
@@ -237,7 +239,7 @@
             }
 
             function thisObject() {
-                if (inBlock) {
+                if (inLambda) {
                     methodRequiresSelf = true;
                     return "_self";
                 }
@@ -298,7 +300,7 @@
 
                 case "Block":
                     assert(n.body.type === "ExprSeq");
-                    inBlock++;
+                    inLambda++;
                     try {
                         var indent2 = indent + "    ";
                         var args = n.params.length === 0
@@ -323,7 +325,7 @@
                         }
                         return "$B(function (" + args + ") {\n" + vars + stmts + last + indent + "})";
                     } finally {
-                        inBlock--;
+                        inLambda--;
                     }
 
                 case "MessageExpr":
@@ -355,13 +357,18 @@
                         if (hd.receiver.type === "SuperExpr")
                             throw new Error("cascading not allowed with super");
                         var rcvar = comp.gensym();
-                        var s = "(function (" + rcvar + ") {\n";
-                        s += indent2 + rcvar + translateMessage(hd.message, indent2) + ";\n";
-                        for (var i = 0; i < msgs.length; i++) {
-                            s += indent2;
-                            if (i === msgs.length - 1)
-                                s += "return ";
-                            s += rcvar + translateMessage(msgs[i], indent2) + ";\n";
+                        inLambda++;
+                        try {
+                            var s = "(function (" + rcvar + ") {\n";
+                            s += indent2 + rcvar + translateMessage(hd.message, indent2) + ";\n";
+                            for (var i = 0; i < msgs.length; i++) {
+                                s += indent2;
+                                if (i === msgs.length - 1)
+                                    s += "return ";
+                                s += rcvar + translateMessage(msgs[i], indent2) + ";\n";
+                            }
+                        } finally {
+                            inLambda--;
                         }
                         return s + indent + "})(" + translateExpr(hd.receiver, ASSIGN_PREC, indent2) + ")";
                     }
