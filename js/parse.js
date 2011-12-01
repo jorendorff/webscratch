@@ -191,7 +191,7 @@ var smalltalk;
 
         function haveLocal(id) {
             for (var i = scopes.length; i--;) {
-                if (scopes[i].indexOf(id) != -1)
+                if (scopes[i].indexOf(id) !== -1)
                     return true;
             }
             return false;
@@ -538,7 +538,7 @@ var smalltalk;
                 if (params.length)
                     require("|");
                 loc = locals();
-                body = withScope(params.concat(locals), exprSeq, "]");
+                body = withScope(params.concat(loc), exprSeq, "]");
             }
             require("]");
             return Block(params, loc, body);

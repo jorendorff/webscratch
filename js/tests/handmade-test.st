@@ -10293,6 +10293,7 @@ To run the tests:
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
 runTests
 	self testBasics;
+	     testCompilerBlocks;
 	     testCompilerSelf;
 	     testIdentifiers;
 	     testIntegers;
@@ -10328,6 +10329,13 @@ testCompilerSelf
  
 	x _ ({1} at: 1 put: self; at: 1).
 	self check: [x == self].
+! !
+
+!HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
+testCompilerBlocks
+	"test compiler support for identifiers in blocks"
+
+	self check: [|x| x _ 2 + 2. x = 4].
 ! !
 
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
