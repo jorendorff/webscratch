@@ -273,7 +273,7 @@
                         comp.unknownNames.push(n.id);
                         console.warn("unknown name: " + n.id);
                     }
-                    return "__smalltalk.globals._" + n.id;
+                    return "__smalltalk.getGlobal(" + comp.getSymbol(n.id) + ")";
 
                 case "Primitive":
                     throw new Error("Unexpected <primitive:> in expression");
@@ -375,11 +375,14 @@
 
                 case "AssignExpr":
                     {
-                        var assgn = translateExpr(n.left, POSTFIX_PREC, "") + " = " + translateExpr(n.right, ASSIGN_PREC, indent + "    ");
-                        if (prec <= ASSIGN_PREC)
-                            return assgn;
+                        var lhs = translateExpr(n.left, POSTFIX_PREC, "");
+                        var rhs = translateExpr(n.right, ASSIGN_PREC, indent + "    ");
+                        if (/^__smalltalk.getGlobal/.test(lhs))
+                            return "__smalltalk.setGlobal(" + comp.getSymbol(n.left.id) + ", " + rhs + ")";
+                        else if (prec <= ASSIGN_PREC)
+                            return lhs + " = " + rhs;
                         else
-                            return "(" + assgn + ")";
+                            return "(" + lhs + " = " + rhs + ")";
                     }
 
                 default:
@@ -533,6 +536,7 @@
                 "    var $B = __smalltalk.Block;\n" +
                 (c.constantDecls.length === 0 ? "" : "    var\n" + c.constantDecls.join(",\n") + ";\n") +
                 classdef_code.join("") +
+                "__smalltalk.init()\n" +
                 classinit_code.join("") +
                 "});\n");
     }

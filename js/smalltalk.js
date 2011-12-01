@@ -361,6 +361,27 @@ var console;
     }
 
 
+    // === Global variables
+
+    var globals;
+    function init() {
+        globals = classes.SystemDictionary.new();
+
+        // Before SystemDictionary#at:put: can be called, the global variable
+        // 'Undeclared' must already be accessible.
+        classes.Dictionary.__im.at_put_.call(globals, Symbol("Undeclared"), classes.Dictionary.new());
+
+        globals.at_put_(Symbol("Smalltalk"), globals);
+    }
+
+    function getGlobal(name) {
+        return globals.at_(name);
+    }
+
+    function setGlobal(name, value) {
+        return globals.at_put_(name, value);
+    }
+
     // === Primitives of other classes
 
     var primitives = Object.create(null);
@@ -891,6 +912,9 @@ var console;
         basicNew_: basicNew_,
         toJSArrayReadOnly: toJSArrayReadOnly,
         toJSIndex: toJSIndex,
-        quit: quitPrimitive
+        quit: quitPrimitive,
+        init: init,
+        getGlobal: getGlobal,
+        setGlobal: setGlobal
     };
 })(this);
