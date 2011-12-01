@@ -10392,6 +10392,9 @@ testPrimitives
                 a basicAt: 2 put: 7.
                 (a at: 1) = 3 and: [(a at: 2) = 7].
              ].
+
+        "71: Object#basicNew:"
+        self check: [((Array new: 5) at: 1) == nil].
 ! !
 
 !HandmadeTests methodsFor: 'support' stamp: 'jto 5/6/2011 19:55'!

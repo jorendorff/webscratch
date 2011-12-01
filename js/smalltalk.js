@@ -152,7 +152,10 @@ var console;
         case 0:
             break;
         case 1: case 2: case 3:
-            obj.__array = Array(toJSNaturalNumber(size));
+            var len = toJSNaturalNumber(size), arr = [];
+            for (var i = 0; i < len; i++)
+                arr[i] = nil;
+            obj.__array = arr;
             break;
         case 4: case 6:
             if (cls === classes.String || Object.prototype.isPrototypeOf(classes.String.__im, cls.__im))
@@ -165,10 +168,10 @@ var console;
     }
 
     function bust() {
-        this.error_("primitive not yet implemented");
+        this.error_(getString("primitive not yet implemented"));
     }
     function die() {
-        this.error_("this program deserves to die");
+        this.error_(getString("this program deserves to die"));
     }
     function noop() { return this; }
 
@@ -177,16 +180,54 @@ var console;
             return getInteger((this.__flags << 1) |
                               +(this.__flags != 2 && this.__iv.length > 0));
         },
-        indexIfCompact: function Behavior$indexIfCompat() {
+        indexIfCompact: function Behavior$indexIfCompact() {
             return getInteger(0);
         },
+        obsolete: noop,
         format: die,
         superclass_methodDictionary_format_: die,
+        methodDict: die,
+        copy: die,
+        copyOfMethodDictionary: die,
+        addSelector_withMethod_: die,
+        compress: noop,
+        methodDictionary: die,
+        methodDictionary_: die,
+        compiledMethodAt_: die,
+        compiledMethodAt_ifAbsent_: die,
+        lookupSelector_: die,
+        methodsDo_: die,
+        selectorAtMethod_setClass_: die,
+        selectors: die,
+        selectorsAndMethodsDo_: die,
+        selectorsDo_: die,
+        sourceCodeAt_: die,
+        sourceCodeAt_ifAbsent_: die,
+        sourceMethodAt_: die,
+        sourceMethodAt_ifAbsent_: die,
+        hasMethods: die,
+        includesSelector_: function Behavior$includesSelector_(symbol) {
+            var got = Object.prototype.hasOwnProperty.call(this.__im, symbol.__str.replace(/:/g, '_'));
+            return got ? true_ : false_;
+        },
+        whichClassIncludesSelector_: die,
+        whichSelectorsAccess_: die,
+        whichSelectorsStoreInto_: die,
+        removeSelectorSimply_: die,
         becomeCompact: die,
         becomeCompactSimplyAt: die,
         becomeUncompact: die,
         someInstance: die,
         flushCache: noop
+    });
+
+    defMethods(ClassDescription_im, {
+        copyMethodDictionaryFrom_: die,
+        induceMDFault: die,
+        recoverFromMDFault: die,
+        zapAllMethods: die,
+        superclass_methodDict_format_name_organization_instVarNames_classPool_sharedPools_: die,
+
     });
 
     function Object_shallowCopy() {
@@ -226,21 +267,22 @@ var console;
         },
         clone: Object_shallowCopy,
         shallowCopy: Object_shallowCopy,
-        perform_: function (aSymbol) { return this.perform_withArguments_(aSymbol, Array_([])); },
-        perform_with_: function (aSymbol, arg1) {
+        perform_: function Object$perform_(aSymbol) {
+            return this.perform_withArguments_(aSymbol, Array_([]));
+        },
+        perform_with_: function Object$perform_with_(aSymbol, arg1) {
             return this.perform_withArguments_(aSymbol, Array_([arg1]));
         },
-        perform_with_with_: function (aSymbol, arg1, arg2) {
+        perform_with_with_: function Object$perform_with_with_(aSymbol, arg1, arg2) {
             return this.perform_withArguments_(aSymbol, Array_([arg1, arg2]));
         },
-        perform_with_with_with_: function (aSymbol, arg1, arg2, arg3) {
+        perform_with_with_with_: function Object$perform_with_with_with(aSymbol, arg1, arg2, arg3) {
             return this.perform_withArguments_(aSymbol, Array_([arg1, arg2, arg3]));
         },
-        perform_withArguments_: function (selector, argArray) {
+        perform_withArguments_: function Object$perform_withArguments_(selector, argArray) {
             return this.perform_withArguments_inSuperclass_(
                 selector, argArray, this.__class);
         },
-
         beep: function Object$beep() {
             console.log("=== beep ===");
             return this;
@@ -494,7 +536,9 @@ var console;
 
     // Object#at:, Object#basicAt:, LargePositiveInteger#digitAt:, String#byteAt:.
     primitives[60] = (
-        "var $$a = this.__array, $$v = $$a[__smalltalk.toJSIndex({0})];\n" +
+        "var $$a = this.__array, $$i = __smalltalk.toJSIndex({0}), $$v = $$a[$$i];\n" +
+        "if ($$i < 0 || $$i >= $$a.length) throw new Error('at: fail');\n" +
+        "if ($$v === undefined) throw new Error('array contents fail!');\n" +
         "return ($$a instanceof Uint8Array) ? __smalltalk.Integer($$v) : $$v;\n");
 
     // Object#at:put:, Object#basicAt:put:, LargePositiveInteger#digitAt:put:
@@ -760,24 +804,57 @@ var console;
 
 
     // --- Symbols
-    defClass("Symbol", classes.String, {}, {}, [], [], 4);
+    var symbols = Object.create(null);
+    defClass("Symbol", classes.String, {}, {
+        intern_: function Symbol$intern_(str) {
+            return Symbol(str.__str);
+        },
+        rehash: function Symbol$rehash() {},
+        hasInterned_ifTrue_: function Symbol$hasInterned_ifTrue_(str, block) {
+            var s = str.__str;
+            if (s in symbols) {
+                block.value_(symbols[s]);
+                return true_;
+            }
+            return false_;
+        },
+        morePossibleSelectorsFor_: function Symbol$morePossibleSelectorsFor_(misspelled) {
+            throw new Error("Symbol#morePossibleSelectorsFor_");
+        },
+        otherThatStarts_skipping_: function Symbol$otherThatStarts_skipping_(leadingCharacters, skipSym) {
+            throw new Error("Symbol#otherThatStarts_skipping_");
+        },
+        possibleSelectorsFor_: function Symbol$possibleSelectorsFor_(misspelled) {
+            throw new Error("Symbol#possibleSelectorsFor_");
+        },
+        selectorsContaining_: function Symbol$selectorsContaining_(aString) {
+            throw new Error("Symbol#selectorsContaining_");
+        },
+        thatStarts_skipping_: function Symbol$otherThatStarts_skipping_(leadingCharacters, skipSym) {
+            throw new Error("Symbol#thatStarts_skipping_");
+        },
+    }, [], [], 4);
     var Symbol_im = classes.Symbol.__im;
-    function Symbol(str) {
-        var obj = Object.create(Symbol_im);
-        obj.__str = str;
+    function Symbol(s) {
+        var obj = symbols[s];
+        if (!obj) {
+            obj = Object.create(Symbol_im);
+            obj.__str = s;
+            symbols[s] = obj;
+        }
         return obj;
     }
 
     // A circular dependency between String#intern and Symbol#initialize makes
     // it impossible to start without pre-populating Symbol#SingleCharSymbols.
-    var symbols = [], sym_im = classes.Symbol.__im;
+    var scsymbols = [], sym_im = classes.Symbol.__im;
     for (var i = 0; i < 128; i++) {
         var s = Object.create(sym_im);
         s.__str = String.fromCharCode(i);
-        symbols[i] = s;
+        symbols[s.__str] = s;
+        scsymbols[i] = s;
     }
-    classes.Symbol._SingleCharSymbols = Array_(symbols);
-
+    classes.Symbol._SingleCharSymbols = Array_(scsymbols);
 
     // --- Other system functions
     function quitPrimitive() {
