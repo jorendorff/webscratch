@@ -13840,6 +13840,9 @@ testIdentifiers
 testIntegers
 	self check: [(0 bitXor: 1) = 1].
 
+        self check: [(2 raisedTo: 31) = 2147483648].
+        self check: [((2 raisedTo: 31) // (2 raisedTo: 15)) = 65536].
+
 	"self check: [16r3FFFFFFF + 1 = 16r40000000]."
 	"self check: [-16r40000000 negate = 16r40000000]."
 	"self check: [(16rF0F0F0F0 bitXor: 16r0F0F0F0F) = 16rFFFFFFFF]."

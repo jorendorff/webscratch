@@ -571,9 +571,8 @@ var console;
     // Object#at:, Object#basicAt:, LargePositiveInteger#digitAt:, String#byteAt:.
     primitives[60] = (
         "var $$a = this.__array, $$i = __smalltalk.toJSIndex({0}), $$v = $$a[$$i];\n" +
-        "if ($$i < 0 || $$i >= $$a.length) throw new Error('at: fail');\n" +
-        "if ($$v === undefined) throw new Error('array contents fail!');\n" +
-        "return ($$a instanceof Uint8Array) ? __smalltalk.Integer($$v) : $$v;\n");
+        "if ($$i >= 0 && $$i < $$a.length)\n" +
+        "    return ($$a instanceof Uint8Array) ? __smalltalk.Integer($$v) : $$v;\n");
 
     // Object#at:put:, Object#basicAt:put:, LargePositiveInteger#digitAt:put:
     // (This primitive is also used for String#byteAt:put:, but it always
