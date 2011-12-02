@@ -523,13 +523,16 @@
                 cd.mark = true;
             }
         }
-        var coreClasses = ['Object', 'Float', 'Character', 'String', 'Symbol', 'Color'];
-        for (var i = 0; i < coreClasses.length; i++) {
-            var name = coreClasses[i];
-            if (name in classdefs)
-                write(name);
+        function writeClasses(arr) {
+            for (var i = 0; i < arr.length; i++) {
+                var name = arr[i];
+                if (name in classdefs)
+                    write(name);
+            }
         }
+        writeClasses(['Object', 'Float', 'Character', 'String', 'Symbol']);
         classinit_code.push("\n    __smalltalk.init();\n\n");
+        writeClasses(['Color', 'AbstractSound']);
         for (var name in classdefs)
             write(name);
 
