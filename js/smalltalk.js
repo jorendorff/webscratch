@@ -54,10 +54,11 @@ var console;
 
     function defineBasicClassDescription(metaclass_im, im, iv) {
         var cls = Object.create(metaclass_im);
-        cls.__im = im;
-        cls.__iv = (cls.__iv || []).concat(iv);
-        cls._superclass = im.__class || nil;  // must do this before setting im.__class!
+        var supercls = im.__class;  // must do this before setting im.__class!
         im.__class = cls;
+        cls.__im = im;
+        cls.__iv = supercls ? supercls.__iv.concat(iv) : iv;
+        cls._superclass = supercls || nil;
         cls.__flags = 0;
         cls._methodDict = cls._format = cls._instanceVariables =
             cls._organization = nil;
@@ -226,8 +227,16 @@ var console;
         induceMDFault: die,
         recoverFromMDFault: die,
         zapAllMethods: die,
-        superclass_methodDict_format_name_organization_instVarNames_classPool_sharedPools_: die,
+        superclass_methodDict_format_name_organization_instVarNames_classPool_sharedPools_: die
+    });
 
+    defMethods(Class_im, {
+        addClassVarName_: function Class$addClassVarName_(name) {
+            var n = '_' + name.__str;
+            if (!(n in this))
+                this[n] = nil;
+            return nil;
+        }
     });
 
     function Object_shallowCopy() {
@@ -322,9 +331,11 @@ var console;
             cls = defineBasicClass(name, mcls_im, cls_im, iv);
             cls.__flags = flags || 0;
             var cv = mcls.__iv;
-            for (var i = 0, n = cv.length; i < n; i++)
-                cls[cv[i]] = nil;
-
+            for (var i = 0, n = cv.length; i < n; i++) {
+                var cvname = cv[i];
+                if (!(cvname in cls))
+                    cls[cvname] = nil;
+            }
             mcls._thisClass = cls;
         }
 
@@ -363,23 +374,25 @@ var console;
 
     // === Global variables
 
-    var globals;
+    var sysDict;
     function init() {
-        globals = classes.SystemDictionary.new();
+        sysDict = classes.SystemDictionary.new();
 
         // Before SystemDictionary#at:put: can be called, the global variable
         // 'Undeclared' must already be accessible.
-        classes.Dictionary.__im.at_put_.call(globals, Symbol("Undeclared"), classes.Dictionary.new());
+        classes.Dictionary.__im.at_put_.call(sysDict, Symbol("Undeclared"), classes.Dictionary.new());
 
-        globals.at_put_(Symbol("Smalltalk"), globals);
+        sysDict.at_put_(Symbol("Smalltalk"), sysDict);
+
+        //sysDict.newChanges_(classes.ChangeSet.new());
     }
 
     function getGlobal(name) {
-        return globals.at_(name);
+        return sysDict.at_(name);
     }
 
     function setGlobal(name, value) {
-        return globals.at_put_(name, value);
+        return sysDict.at_put_(name, value);
     }
 
     // === Primitives of other classes

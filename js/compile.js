@@ -529,6 +529,7 @@
             if (name in classdefs)
                 write(name);
         }
+        classinit_code.push("\n    __smalltalk.init();\n\n");
         for (var name in classdefs)
             write(name);
 
@@ -536,7 +537,6 @@
                 "    var $B = __smalltalk.Block;\n" +
                 (c.constantDecls.length === 0 ? "" : "    var\n" + c.constantDecls.join(",\n") + ";\n") +
                 classdef_code.join("") +
-                "__smalltalk.init()\n" +
                 classinit_code.join("") +
                 "});\n");
     }
