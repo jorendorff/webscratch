@@ -230,12 +230,19 @@ var console;
         superclass_methodDict_format_name_organization_instVarNames_classPool_sharedPools_: die
     });
 
+    function toJSVarName(name) {
+        return '_' + name.__str;
+    }
+
     defMethods(Class_im, {
         addClassVarName_: function Class$addClassVarName_(name) {
-            var n = '_' + name.__str;
+            var n = toJSVarName(name);
             if (!(n in this))
                 this[n] = nil;
             return nil;
+        },
+        classPool: function Class$classPool() {
+            return this._classPool === nil ? classes.ClassPool.for_(this) : this._classPool;
         }
     });
 
@@ -394,6 +401,24 @@ var console;
     function setGlobal(name, value) {
         return sysDict.at_put_(name, value);
     }
+
+
+    // === ClassPool
+
+    defClass("ClassPool", classes.Object, {
+        includesKey_: function ClassPool$includesKey_(key) {
+            return Object.prototype.hasOwnProperty.call(this._cls, toJSVarName(key)) ? true_ : false_;
+        },
+        at_put_: function ClassPool$at_put_(key, val) {
+            this._cls[toJSVarName(key)] = val;
+        }
+    }, {
+        for_: function ClassPool$for_(cls) {
+            var pool = this.new();
+            pool._cls = cls;
+            return pool;
+        }
+    }, ['_cls'], []);
 
     // === Primitives of other classes
 
@@ -640,6 +665,9 @@ var console;
 
     // Behavior#flushCache.
     primitives[89] = "return __smalltalk.nil;\n";
+
+    // BitBlt#copyBits. Totally bogus implementation.
+    primitives[96] = "return __smalltalk.nil;\n";
 
     // SystemDictionary#snapshotPrimitive.
     primitives[97] = "throw new Error('SystemDictionary#snapshotPrimitive');\n";

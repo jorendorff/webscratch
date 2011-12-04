@@ -519,7 +519,7 @@
                     write(cd.superclassName);
                 classdef_code.push(cd.code);
                 if ("initialize" in classes[name].classMethods)
-                    classinit_code.push("    _" + name + ".initialize();\n");
+                    classinit_code.push("    print('initializing " + name + "...'); _" + name + ".initialize();\n");
                 cd.mark = true;
             }
         }
@@ -532,7 +532,12 @@
         }
         writeClasses(['Object', 'Float', 'Character', 'String', 'Symbol']);
         classinit_code.push("\n    __smalltalk.init();\n\n");
-        writeClasses(['Color', 'AbstractSound']);
+        writeClasses([
+            'Color',
+            'AbstractSound',
+            'SoundPlayer', // SoundMedia depends on this
+            'SampledSound' // SoundMedia depends on this
+        ]);
         for (var name in classdefs)
             write(name);
 
