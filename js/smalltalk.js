@@ -825,6 +825,10 @@ var console;
         obj.__fn = fn;
         return obj;
     }
+    function answer(throwable, val) {
+        throwable[0] = val;
+        throw throwable;
+    }
 
     // --- Strings
     defClass("String", classes.ArrayedCollection, {
@@ -940,6 +944,7 @@ var console;
         Integer: getInteger,
         Array: Array_,
         Block: Block,
+        answer: answer,
         defClass: defClass,
         hasMethod: hasMethod,
         hasClassMethod: hasClassMethod,

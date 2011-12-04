@@ -200,6 +200,83 @@
             // a block or cascade lambda, not the method.
             var inLambda = 0;
 
+            function translateBlockBodyInlineAsStmts(body, indent) {
+                var seq = body.seq;
+                var code = '';
+                for (var i = 0; i < seq.length; i++)
+                    code += translateStmt(seq[i], indent);
+                return code;
+            }
+
+            function translateStmt(n, indent) {
+                switch (n.type) {
+                case "Nil":
+                case "True":
+                case "False":
+                case "Self":
+                case "ThisContext":
+                case "Local":
+                case "Identifier":
+                case "Character":
+                case "String":
+                case "Symbol":
+                case "Float":
+                case "Integer":
+                case "ConstantArray":
+                case "Block":
+                    console.warn("useless expression in " + className + "#" + selector);
+                    return "";
+
+                case "ArrayExpr":
+                    console.warn("unused array expression in " + className + "#" + selector);
+                    break;
+
+                case "AnswerExpr":
+                    if (inLambda) {
+                        methodRequiresAnswer = true;
+                        return indent + "$a[0] = " + translateExpr(n.expr, ASSIGN_PREC, indent) + ";\n" +
+                               indent + "throw $a;\n";
+                    } else {
+                        return indent + "return " + translateExpr(n.expr, ASSIGN_PREC, indent) + ";\n";
+                    }
+                    break;
+
+                case "MessageExpr":
+                    var msg = n.message;
+                    assert(msg.type === "Message");
+                    var target = msg.selector;
+                    if (n.receiver.type === "Super")
+                        break;
+                    if (target === "ifTrue:" && msg.args[0].type === "Block") {
+                        return indent + "if (" +
+                            translateExpr(n.receiver, POSTFIX_PREC, indent + "    ") +
+                            " === " + comp.true_ + ") {\n" +
+                            translateBlockBodyInlineAsStmts(msg.args[0].body, indent + "    ") +
+                            indent + "}\n";
+                    } else if (msg.selector === "ifFalse:" && msg.args[0].type === "Block") {
+                        return indent + "if (!(" +
+                            translateExpr(n.receiver, POSTFIX_PREC, indent + "    ") +
+                            " === " + comp.true_ + ")) {\n" +
+                            translateBlockBodyInlineAsStmts(msg.args[0].body, indent + "    ") +
+                            indent + "}\n";
+                    } else if ((msg.selector === "ifTrue:ifFalse:" || msg.selector === "ifFalse:ifTrue:") &&
+                               msg.args[0].type === "Block" && msg.args[1].type === "Block") {
+                        var tf = msg.selector === "ifTrue:ifFalse:";
+                        var ifTrueBlock = msg.args[tf ? 0 : 1];
+                        var ifFalseBlock = msg.args[tf ? 1 : 0];
+                        return indent + "if (" +
+                            translateExpr(n.receiver, POSTFIX_PREC, indent + "    ") +
+                            " === " + comp.true_ + ") {\n" +
+                            translateBlockBodyInlineAsStmts(ifTrueBlock.body, indent + "    ") +
+                            indent + "} else {\n" +
+                            translateBlockBodyInlineAsStmts(ifFalseBlock.body, indent + "    ") +
+                            indent + "}\n";
+                    }
+                    break;
+                }
+                return indent + translateExpr(n, ASSIGN_PREC, indent) + ";\n";
+            }
+
             function translateBody(b) {
                 assert(b.type === "ExprSeq");
                 b = b.seq;
@@ -228,7 +305,7 @@
                 }
 
                 var exprs = b.slice(0 + hasPrimitive, b.length - hasAnswer).map(function (x) {
-                    return "            " + translateExpr(x, ASSIGN_PREC, "            ") + ";\n";
+                    return translateStmt(x, "            ");
                 });
                 s += exprs.join("");
                 if (hasAnswer)
@@ -244,6 +321,10 @@
                     return "_self";
                 }
                 return "this";
+            }
+
+            function jsIfExpr(testExpr, trueExpr, falseExpr) {
+                return "(" + testExpr + " === " + comp.true_ + " ? " + trueExpr + " : " + falseExpr + ")";
             }
 
             function translateExpr(n, prec, indent) {
@@ -328,6 +409,24 @@
                         inLambda--;
                     }
 
+                case "ExprSeq":
+                    // This can happen only if a block has been inlined.
+                    if (n.seq.length === 0)
+                        return comp.nil;
+                    else if (n.seq.length === 1)
+                        return translateExpr(n.seq[0], prec, indent);
+                    else {
+                        return "(" + n.seq.map(function (n) {
+                            return translateExpr(n, prec, indent + "    ");
+                        }).join(", ") + ")";
+                    }
+                    break;
+
+                case "AnswerExpr":
+                    // This can happen only if a block has been inlined.
+                    methodRequiresAnswer = true;
+                    return "__smalltalk.answer($a, " + translateExpr(n.expr, ASSIGN_PREC, indent + "    ") + ")";
+
                 case "MessageExpr":
                     {
                         var indent2 = indent + "    ";
@@ -343,6 +442,25 @@
                             return "_" + comp.currentClass.superclassName +
                                    (isInstanceMethod ? ".__im" : "") +
                                    messageJSName(msg) + ".call(" + args + ")";
+                        }
+
+                        var target = msg.selector;
+                        if (target === "ifTrue:" && msg.args[0].type === "Block") {
+                            return jsIfExpr(translateExpr(rcv, POSTFIX_PREC, indent + "    "),
+                                            translateExpr(msg.args[0].body, ASSIGN_PREC, indent + "    "),
+                                            comp.nil);
+                        } else if (msg.selector === "ifFalse:" && msg.args[0].type === "Block") {
+                            return jsIfExpr(translateExpr(rcv, POSTFIX_PREC, indent + "    "),
+                                            comp.nil,
+                                            translateExpr(msg.args[0].body, ASSIGN_PREC, indent + "    "));
+                        } else if ((msg.selector === "ifTrue:ifFalse:" || msg.selector === "ifFalse:ifTrue:") &&
+                                   msg.args[0].type === "Block" && msg.args[1].type === "Block") {
+                            var tf = msg.selector === "ifTrue:ifFalse:";
+                            var ifTrueBlock = msg.args[tf ? 0 : 1];
+                            var ifFalseBlock = msg.args[tf ? 1 : 0];
+                            return jsIfExpr(translateExpr(n.receiver, POSTFIX_PREC, indent + "    "),
+                                            translateExpr(ifTrueBlock.body, ASSIGN_PREC, indent + "    "),
+                                            translateExpr(ifFalseBlock.body, ASSIGN_PREC, indent + "    "));
                         } else {
                             return translateExpr(rcv, POSTFIX_PREC, indent2) + translateMessage(msg, indent2);
                         }
