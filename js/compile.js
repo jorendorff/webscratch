@@ -78,6 +78,54 @@
         return indent + "var " + arr.map(toJSName).join(", ") + ";\n";
     }
 
+    var inlineableTypes = {
+        "Nil": true,
+        "True": true,
+        "False": true,
+        "Character": true,
+        "String": true,
+        "Symbol": true,
+        "Float": true,
+        "Integer": true,
+        "ConstantArray": true,
+        "Block": true
+    }
+
+    function isInlineable(n) {
+        if (n.method.args.length !== 0)
+            return false;
+        var seq = n.method.body.seq;
+        if (seq.length !== 1 || seq[0].type !== "AnswerExpr")
+            return false;
+        var val = seq[0].expr;
+        return val.type in inlineableTypes;
+    }
+
+    function inlineableMethods(classes) {
+        // A table of candidates for optimization. Each entry has a selector
+        // for the key and either a method object or false for the value. A
+        // method object means there is exactly one method (so far)
+        // implementing that selector, and it is inlineable. false means either
+        // there are multiple implementations or the single implementation is
+        // not inlineable.
+        var candidates = Object.create(null);
+
+        for (var name in classes) {
+            var cls = classes[name];
+            for (var selector in cls.methods) {
+                var method = cls.methods[selector];
+                if (selector in candidates || !isInlineable(method)) {
+                    // Multiple implementations have now been seen; or the method isn't inlineable
+                    candidates[selector] = false;
+                } else {
+                    candidates[selector] = method;
+                }
+            }
+        }
+
+        return candidates;
+    }
+
     // Compilation is a whole-program operation.
     // We common up constants across the whole program, and
     // optimizations are planned that would be unsound if we didn't see
@@ -86,8 +134,9 @@
         // Classes is provided by the runtime, initially populated with
         // a few core classes and some primitive methods.
         this.classes = classes;
+        this.inlineable = inlineableMethods(classes);
 
-        // Constants
+        // Support for Smalltalk constants
         this.constantDecls = [];
         this.nil = this.addConstant("__smalltalk.nil");
         this.true_ = this.addConstant("__smalltalk.true");
@@ -105,7 +154,6 @@
         // Per-class state
         this.currentClass = null;
     }
-
     
     var subclassKindToFlags = {
         "subclass": 0,
@@ -208,7 +256,8 @@
                 return code;
             }
 
-            function translateStmt(n, indent) {
+            // Return true if the given AST node is guaranteed to be effect-free.
+            function isEffectFree(n) {
                 switch (n.type) {
                 case "Nil":
                 case "True":
@@ -224,9 +273,24 @@
                 case "Integer":
                 case "ConstantArray":
                 case "Block":
+                    return true;
+
+                case "ArrayExpr":
+                    return n.elements.every(isEffectFree);
+
+                case "ExprSeq":
+                    return n.seq.every(isEffectFree);
+                }
+                return false;
+            }
+
+            function translateStmt(n, indent) {
+                if (isEffectFree(n)) {
                     console.warn("useless expression in " + className + "#" + selector);
                     return "";
+                }
 
+                switch (n.type) {
                 case "ArrayExpr":
                     console.warn("unused array expression in " + className + "#" + selector);
                     break;
@@ -247,21 +311,29 @@
                     var target = msg.selector;
                     if (n.receiver.type === "Super")
                         break;
-                    if (target === "ifTrue:" && msg.args[0].type === "Block") {
+                    if (comp.inlineable[target]) {
+                        var seq = comp.inlineable[target].method.body.seq;
+                        assertEq(seq.length, 1);
+                        assertEq(seq[0].type, "AnswerExpr");
+                        if (isEffectFree(n.receiver)) {
+                            console.warn("optimizing away useless call to " + n.receiver);
+                            return "";
+                        }
+                    } else if (target === "ifTrue:" && msg.args[0].type === "Block") {
                         return indent + "if (" +
                             translateExpr(n.receiver, POSTFIX_PREC, indent + "    ") +
                             " === " + comp.true_ + ") {\n" +
                             translateBlockBodyInlineAsStmts(msg.args[0].body, indent + "    ") +
                             indent + "}\n";
-                    } else if (msg.selector === "ifFalse:" && msg.args[0].type === "Block") {
+                    } else if (target === "ifFalse:" && msg.args[0].type === "Block") {
                         return indent + "if (!(" +
                             translateExpr(n.receiver, POSTFIX_PREC, indent + "    ") +
                             " === " + comp.true_ + ")) {\n" +
                             translateBlockBodyInlineAsStmts(msg.args[0].body, indent + "    ") +
                             indent + "}\n";
-                    } else if ((msg.selector === "ifTrue:ifFalse:" || msg.selector === "ifFalse:ifTrue:") &&
+                    } else if ((target === "ifTrue:ifFalse:" || target === "ifFalse:ifTrue:") &&
                                msg.args[0].type === "Block" && msg.args[1].type === "Block") {
-                        var tf = msg.selector === "ifTrue:ifFalse:";
+                        var tf = target === "ifTrue:ifFalse:";
                         var ifTrueBlock = msg.args[tf ? 0 : 1];
                         var ifFalseBlock = msg.args[tf ? 1 : 0];
                         return indent + "if (" +
@@ -270,6 +342,15 @@
                             translateBlockBodyInlineAsStmts(ifTrueBlock.body, indent + "    ") +
                             indent + "} else {\n" +
                             translateBlockBodyInlineAsStmts(ifFalseBlock.body, indent + "    ") +
+                            indent + "}\n";
+                    } else if ((target === "whileTrue:" || target === "whileFalse:") &&
+                               n.receiver.type === "Block" &&
+                               msg.args[0].type === "Block") {
+                        var testexpr = translateExpr(n.receiver.body, POSTFIX_PREC, indent + "    ") + " === " + comp.true_;
+                        if (target === "whileFalse:")
+                            testexpr = "!(" + testexpr + ")";
+                        return indent + "while (" + testexpr + ") {\n" +
+                            translateBlockBodyInlineAsStmts(msg.args[0].body, indent + "    ") +
                             indent + "}\n";
                     }
                     break;
@@ -417,7 +498,7 @@
                         return translateExpr(n.seq[0], prec, indent);
                     else {
                         return "(" + n.seq.map(function (n) {
-                            return translateExpr(n, prec, indent + "    ");
+                            return translateExpr(n, ASSIGN_PREC, indent + "    ");
                         }).join(", ") + ")";
                     }
                     break;
@@ -445,7 +526,13 @@
                         }
 
                         var target = msg.selector;
-                        if (target === "ifTrue:" && msg.args[0].type === "Block") {
+                        if (comp.inlineable[target]) {
+                            var seq = comp.inlineable[target].method.body.seq;
+                            assertEq(seq.length, 1);
+                            assertEq(seq[0].type, "AnswerExpr");
+                            if (isEffectFree(n.receiver))
+                                return translateExpr(seq[0].expr, ASSIGN_PREC, indent + "    ");
+                        } else if (target === "ifTrue:" && msg.args[0].type === "Block") {
                             return jsIfExpr(translateExpr(rcv, POSTFIX_PREC, indent + "    "),
                                             translateExpr(msg.args[0].body, ASSIGN_PREC, indent + "    "),
                                             comp.nil);
@@ -583,7 +670,6 @@
         }
 
     };
-
 
     function translate(classes) {
 /*

@@ -13799,6 +13799,8 @@ testBasics
 	self check: [{1} isEmpty not].
 	self check: [{1. 2. 3. 3. 5. 7. 12} isSorted].
 	self check: [{1. 2. 3. 3. 5. 4. 12} isSorted not].
+
+        self check: [self sailingYear = 1492].
 ! !
 
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
@@ -13894,6 +13896,11 @@ testPrimitives
 
 	"71: Object#basicNew:"
 	self check: [((Array new: 5) at: 1) == nil].
+! !
+
+!HandmadeTests methodsFor: 'tests' stamp: 'jto 5/6/2011 19:55'!
+sailingYear
+	^ 1492.
 ! !
 
 !HandmadeTests methodsFor: 'support' stamp: 'jto 5/6/2011 19:55'!
