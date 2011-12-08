@@ -1,4 +1,88 @@
 // Smalltalk runtime, for use with compile.js and code emitted by it
+//
+// === How objects are represented
+//
+// Every Smalltalk class is a JS object. Every Smalltalk method is a JS function.
+// Every Smalltalk object is a JS object.
+//
+// Inheritance is implemented using the JS prototype chain, like this:
+//
+// +----------+ __proto__  +------------+ __proto__  +----------------------+
+// | an Array |----------->| Array.__im |----------->|ArrayedCollection.__im|--->...
+// +----------+            +------------+            +----------------------+
+//
+// These .__im objects are not the classes themselves; that would be wrong,
+// because then all objects would inherit all the methods of classes, like
+// Class#name and so on. Rather, each class has an __im method that only
+// contains instance methods (and the .__class property pointing back to its
+// class).
+//
+// __im objects are *only* JS objects; they are not Smalltalk objects. They
+// can't have instance variables.  Methods must not be called on them. They are
+// never directly exposed to Smalltalk code. They are an implementation detail.
+// They exist only to make Smalltalk objects inherit all the right methods.
+//
+// Metaclasses work exactly the same as in any Smalltalk.
+//
+//                                                                                       +----------------+
+//                                                                                       +   Metaclass    +---> to Class.__im, etc.
+//                                                                                       +----------------+
+//                                                                                            ^   |     
+//                                                                                     __class|   |__im 
+//                                                                                            |   v     
+//                                                   +----------------------+ __proto__  +----------------+
+//                                                   |    Array class       |----------->| Metaclass.__im |---> to Class.__im, etc.
+//                                                   +----------------------+            +----------------+
+//                                                           ^   |     
+//                                                    __class|   |__im 
+//                                                           |   v     
+//                         +------------+ __proto__  +----------------------+
+//           classes:      |   Array    |----------->|  (Array class).__im  |--->... to (ArrayedCollection class).__im, etc.
+//                         +------------+            +----------------------+
+//                             ^   |            
+//                      __class|   |__im        
+//                             |   v            
+// +----------+ __proto__  +------------+ __proto__
+// | an Array |----------->| Array.__im |-----------> to ArrayedCollection.__im, SequencedCollection.__im, etc.
+// +----------+            +------------+          
+//
+//
+// --- How data is stored
+//
+// Instance variables: A JS object that's a Smalltalk object has a data
+//     property for each Smalltalk instance variable. To distinguish these data
+//     properties from methods, each one gets a leading underscore. So for
+//     example if a Smalltalk class has instance variables borderWidth and
+//     borderColor, each JS object of that class has properties
+//     this._borderWidth and this._borderColor.
+//
+// Variable-length data: A Smalltalk object of a class that isVariable is
+//     represented as a JS object with an __array or __str property containing
+//     the variable-length data. Strings have .__str; it's a JS string. Other
+//     objects with byte data have a .__array property that is a
+//     Uint8Array. Other objects with variable-length data have a .__array that
+//     is a JS array. Naturally these JS strings and arrays are not Smalltalk
+//     objects and are never directly exposed to Smalltalk code; but the
+//     implementation of Object>>basicAt: and so forth use them.
+//
+// Class variables: These are stored just like instance variables of classes:
+//     they are data properties of classes. They can't collide with any actual
+//     instance variables of class Class because class variables start with an
+//     uppercase letter. The 'name' instance variable of a class is cls._name;
+//     if a class has a class variable named 'Name', that's cls._Name.
+//
+// Global variables: Just as in Squeak, these are entries of the
+//     SystemDictionary.
+//
+// Primitives: As in Squeak, nil, true, and false are singleton objects and
+//     contain no data; they are distinguished by identity and the fact that
+//     each one is the only instance of its class. SmallInteger and Float
+//     objects have a .__value property containing a JS number. String objects
+//     have a .__str property containing a JS string.
+//
+// Blocks: A block is a BlockContext object; each one has a .__fn property
+//     that is a JS function: the code for the block.
+
 
 var SmalltalkRuntime;
 var console;
@@ -237,6 +321,12 @@ var console;
     defMethods(Class_im, {
         addClassVarName_: function Class$addClassVarName_(name) {
             var n = toJSVarName(name);
+
+            // Class variables aren't "instance variables of Class
+            // objects". The difference, apart from syntax, is that each
+            // instance variable, appears on *every* instance of a class. But
+            // class variables do not appear on every instance of Class or of
+            // any particular metaclass; they are like JS "expando properties".
             if (!(n in this))
                 this[n] = nil;
             return nil;
