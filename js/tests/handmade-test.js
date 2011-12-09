@@ -3,6 +3,7 @@
 (function (argv) {
     "use strict";
 
+    load("../BigInt.js");
     load("../smalltalk.js");
     load("../parse.js");
     load("../compile.js");

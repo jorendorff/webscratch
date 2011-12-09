@@ -87,6 +87,7 @@
         "Symbol": true,
         "Float": true,
         "Integer": true,
+        "LargeInteger": true,
         "ConstantArray": true,
         "Block": true
     }
@@ -201,6 +202,13 @@
             return name;
         },
 
+        getLargeInteger: function getLargeInteger(s) {
+            var name = this.integerCache[s];
+            if (name === undefined)
+                name = this.integerCache[s] = this.addConstant("__smalltalk.LargeInteger('" + s + "')");
+            return name;
+        },
+
         getFloat: function getFloat(n) {
             var s;
             if (n === 1/0)
@@ -271,6 +279,7 @@
                 case "Symbol":
                 case "Float":
                 case "Integer":
+                case "LargeInteger":
                 case "ConstantArray":
                 case "Block":
                     return true;
@@ -440,11 +449,12 @@
                 case "Primitive":
                     throw new Error("Unexpected <primitive:> in expression");
 
-                case "Character": return comp.getCharacter(n.value);
-                case "String":    return comp.getString(n.value);
-                case "Symbol":    return comp.getSymbol(n.value);
-                case "Float":     return comp.getFloat(n.value);
-                case "Integer":   return comp.getInteger(n.value);
+                case "Character":     return comp.getCharacter(n.value);
+                case "String":        return comp.getString(n.value);
+                case "Symbol":        return comp.getSymbol(n.value);
+                case "Float":         return comp.getFloat(n.value);
+                case "Integer":       return comp.getInteger(n.value);
+                case "LargeInteger":  return comp.getLargeInteger(n.value);
 
                 case "ConstantArray":
                     {
@@ -672,35 +682,6 @@
     };
 
     function translate(classes) {
-/*
-        // === Optimized methods
-
-        var optimizedMethods = [
-            ["ifTrue:", "True False", function (n, indent) {
-                if (n.args[0].type === "Block")
-                return "($b(" + translateExpr(n.receiver, POSTFIX_PREC, indent) +
-                       ") ? " + translateExpr(n.args[0], ASSIGN_PREC, indent2) +
-                       " : " + nil + ")";
-            }],
-            ["ifFalse:", "True False", function (n, indent) {
-                return "($b(" + translateExpr(n.receiver, POSTFIX_PREC, indent) +
-                       ") ? " + nil +
-                       " : " + translateExpr(n.args[0], ASSIGN_PREC, indent2) + ")";
-            }],
-            ["ifTrue:ifFalse:", "True False", function (n, indent) {
-                return "($b(" + translateExpr(n.receiver, POSTFIX_PREC, indent) +
-                       ") ? " + translateExpr(n.args[0], ASSIGN_PREC, indent2) +
-                       " : " + translateExpr(n.args[1], ASSIGN_PREC, indent2) + ")";
-            }],
-            ["ifFalse:ifTrue:", "True False", function (n, indent) {
-                return "($b(" + translateExpr(n.receiver, POSTFIX_PREC, indent) +
-                       ") ? " + translateExpr(n.args[1], ASSIGN_PREC, indent2) +
-                       " : " + translateExpr(n.args[0], ASSIGN_PREC, indent2) + ")";
-            }]
-        ];
-
-*/
-
         var c = new Compilation(classes);
 
         var classdefs = Object.create(null);

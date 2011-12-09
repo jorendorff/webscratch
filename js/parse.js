@@ -23,16 +23,15 @@
 // Object and class instance variables have names starting with an underscore.
 // They are only used in contexts where we know the access will succeed.
 //
-// Classes have a top-secret property __methodDict, which holds
-// all the instance methods.  Objects inherit from that. Classes in
-// turn inherit all their methods from the metaclass's
-// __methodDict object. Each __methodDict object has a
-// __class property pointing back to the class; these are exactly like
-// .prototype and .constructor.
+// Classes have a top-secret property __im, which holds all the instance
+// methods.  Objects inherit from that. Classes in turn inherit all their
+// methods from the metaclass's __im object.  Each __im object has a __class
+// property pointing back to the class; these are exactly like .prototype and
+// .constructor.
 //
-// Behavior.__methodDict.basicNew = function () {
-//     var obj = Object.create(this.__methodDict);
-//     var iv = this.__instanceVariables;
+// Behavior.__im.basicNew = function () {
+//     var obj = Object.create(this.__im);
+//     var iv = this.__iv;
 //     for (var i = 0; i < iv.length; i++)
 //         Object.defineProperty(obj, iv[i], {configurable: true, enumerable: true, writable: true, value: _nil});
 //     return obj;
@@ -158,6 +157,7 @@ var smalltalk;
         function String(v) { return {type: "String", value: v}; }
         function Symbol(v) { return {type: "Symbol", value: v}; }
         function Integer(v) { return {type: "Integer", value: v}; }
+        function LargeInteger(v) { return {type: "LargeInteger", value: v}; }
         function Float(v) { return {type: "Float", value: v}; }
         function ConstantArray(arr) { return {type: "ConstantArray", elements: arr}; }
         function ArrayExpr(arr) { return {type: "ArrayExpr", elements: arr}; }
@@ -222,33 +222,53 @@ var smalltalk;
             }
         }
 
+        var BigInt = {
+            str2bigInt: str2bigInt,
+            bigInt2str: bigInt2str
+        };
+
         function number(s) {
             var m = /(-)?([0-9]+)(r[0-9A-Z]+)?(\.[0-9A-Z]+)?(e([+-]?[0-9]+))?/.exec(s);
+            var sign = m[1] || '';
+
             check(m !== null, "wack number literal " + s);
-            var NumberType = s.indexOf('.') === -1 ? Integer : Float;
-            var n;
-            if (m[3] === undefined) {
-                n = +s;
-            } else {
-                var base = parseInt(m[2].replace(/^0*/, ''));
-                var digit = function (s, i) {
-                    var c = s.charCodeAt(i);
-                    var v = c - (c < 58 ? 48 : 55);
-                    check(v < base, "digit " + c + " is out of range for base " + base + " in number literal " + s);
-                    return v;
-                };
-                var n = 0;
-                for (var i = 1; i < m[3].length; i++)
-                    n = n * base + digit(m[3], i);
-                check(m[4] === undefined, "not supported: decimal points in non-decimal number literals " + s);
-                if (m[5] !== undefined)
-                    n *= Math.pow(base, parseInt(m[6].replace(/^0+/, '')));
-                if (m[1] !== undefined)
-                    n = -n;
+            if (m[4] !== undefined) {
+                // Decimal point found.
+                check(m[3] === undefined, "not supported: decimal points in non-decimal number literals " + s);
+                return Float(+s);
             }
-            if (n < (0xc0000000|0) || 0x3fffffff < n)
-                NumberType = Float;  // should be LargeInteger, really
-            return NumberType(n);
+
+            // If we get here, s is an integer constant. Extract the base and digits.
+            var base, digits;
+            if (m[3] === undefined) {
+                base = 10;
+                digits = m[2];
+            } else {
+                base = parseInt(m[2].replace(/^0*/, ''));
+                digits = m[3].substring(1);
+            }
+
+            // Check all the digits in the string.
+            for (var i = 0; i < digits.length; i++) {
+                var c = digits.charCodeAt(i);
+                var v = c < 58 ? c - 48 : c - 55;
+                check(v < base, "digit " + c + " is out of range for base " + base + " in number literal " + s);
+            }
+
+            // Convert to hex. (This is pretty silly in the common case that
+            // it's a decimal constant that fits in a SmallInteger, but it's
+            // correct.)
+            var hex = digits;
+            if (base !== 16)
+                hex = bigInt2str(str2bigInt(digits, base, 0), 16);
+
+            var n = '0x' + hex;
+            if (sign)
+                n = -n;
+            if ((0xc0000000|0) < n && n <= 0x3fffffff)
+                return Integer(n);
+            else
+                return LargeInteger(sign + hex);
         }
 
 

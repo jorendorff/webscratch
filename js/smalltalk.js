@@ -526,20 +526,27 @@ var console;
 
     function getInteger(n) {
         if (n < (0xc0000000|0) || 0x3fffffff < n)
-            return getLargeInteger(n);
+            return getLargeInteger(n.toString(16));
         return getSmallInteger(n);
     }
 
-    function getLargeInteger(n) {
-        var cls = n < 0 ? classes.LargeNegativeInteger : classes.LargePositiveInteger;
-        n = Math.abs(n);
-        var s = n.toString(16);
+    function getLargeInteger(s) {
+        var cls;
+        if (s.charAt(0) === '-') {
+            s = s.substring(1);
+            cls = classes.LargeNegativeInteger;
+        } else {
+            cls = classes.LargePositiveInteger;
+        }
+
         if (s.length & 1)
             s = "0" + s;
-        var obj = cls.new_(getSmallInteger(s.length >> 1));
+
+        var obj = basicNew_(cls, getSmallInteger(s.length >> 1));
         var p = s.length;
-        for (var i = 0; i < s.length; i++, p -= 2)
-            obj.__array[i] = parseInt(s.slice(p - 2, p), 16);
+        var bytes = obj.__array;
+        for (var i = 0; i < bytes.length; i++, p -= 2)
+            bytes[i] = parseInt(s.slice(p - 2, p), 16);
         return obj;
     }
 
@@ -627,10 +634,11 @@ var console;
         "    if ($$k === 0) {\n" +
         "        return this;\n" +
         "    } else if ($$k > 0) {\n" +
-        // This only hits for positive $$b. It might be better to test that
-        // (($$b << $$k) >> $$k) === $$b, i.e. that 32 bits is sufficient to
-        // represent the result; but I can't be bothered to do the proof.
-        "        if ($$k < 32 && ($$b & (-1 << (32 - $$k))) === 0)\n" +
+        // Here we check whether 32 bits is sufficient to hold the result.
+        // This check detects when a bit that does not match the sign bit is
+        // shifted left into the sign bit (or past it, off the end of the
+        // integer.)
+        "        if ((($$b << $$k) >> $$k) === $$b)\n" +
         "            return __smalltalk.Integer($$b << $$k);\n" +
         "    } else if ($$k > -32) {\n" +
         "        return __smalltalk.Integer($$b >> -$$k);\n" +
@@ -812,6 +820,9 @@ var console;
         obj.__value = n;
         return obj;
     }
+
+    defClass("LargePositiveInteger", classes.Integer, {}, {}, [], [], 4);
+    defClass("LargeNegativeInteger", classes.LargePositiveInteger, {}, {}, [], [], 4);
 
     defClass("Float", classes.Number, {
         arcTan: function () { return getFloat(Math.atan(this.__value)); },
@@ -1031,6 +1042,7 @@ var console;
         Symbol: Symbol,
         Float: getFloat,
         SmallInteger: getSmallInteger,
+        LargeInteger: getLargeInteger,
         Integer: getInteger,
         Array: Array_,
         Block: Block,

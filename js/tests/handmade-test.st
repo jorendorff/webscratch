@@ -13845,14 +13845,19 @@ testIntegers
         self check: [(2 raisedTo: 31) = 2147483648].
         self check: [((2 raisedTo: 31) // (2 raisedTo: 15)) = 65536].
 
-	"self check: [16r3FFFFFFF + 1 = 16r40000000]."
-	"self check: [-16r40000000 negate = 16r40000000]."
-	"self check: [(16rF0F0F0F0 bitXor: 16r0F0F0F0F) = 16rFFFFFFFF]."
+        self check: [16r3FFFFFFF class == SmallInteger].
+        "self check: [-16r40000000 class == SmallInteger]."  "bug: we fail to consider that it is negative when checking to see if it is in SmallInteger domain."
+
+	self check: [16r3FFFFFFF + 1 = 16r40000000].
+	self check: [-16r40000000 negated = 16r40000000].
+	self check: [(16rF0F0F0F0 bitXor: 16r0F0F0F0F) = 16rFFFFFFFF].
 	self check: [1 ~= 2].
 	self check: [(0 bitXor: 0) = 0].
 
-	"this one doesn't work yet -- outside the range of precise integer-valued Numbers."
-	"self check: [16r0123456789ABCDEF0123456789ABCDEF = 1512366075204170929049582354406559215]."
+        " test integers outside the range of precise-valued JS Numbers "
+	self check: [16r0123456789ABCDEF0123456789ABCDEF = 1512366075204170929049582354406559215].
+	self check: [16r0123456789ABCDEF0123456789ABCDEF ~= 1512366075204170929049582354406559214].
+	self check: [16r0123456789ABCDEF0123456789ABCDEF ~= 1512366075204170929049582354406559216].
 ! !
 
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
@@ -13860,16 +13865,16 @@ testPrimitives
 	"17: SmallInteger#bitShift:"
 	self check: [(1 bitShift: 4) = 16];
 	     check: [(-1 bitShift: 4) = -16];
-	     check: [(16r12345 bitShift: 12) = 16r12345000].
-	"The rest of these need better LargeInteger support."
-	"     check: [(1 bitShift: 31) = 16r80000000];"
-	"     check: [((16rFFFFFFFF bitShift: 4) bitShift: -4) = 16rFFFFFFFF];"
-	"     check: [((16rFFFFFFFF bitShift: -4) bitShift: 4) = 16rFFFFFFF0];"
-	"     check: [(1 bitShift: 32) = 16r100000000];"
-	"     check: [(16rF0000000 bitShift: 4) = 16rF00000000];"
-	"     check: [(16r70000000 bitShift: 4) = 16r700000000];"
-	"     check: [(16rF0000000 bitShift: -4) = 16r0F000000];"
-	"     check: [(16r70000000 bitShift: -4) = 16r07000000];"
+	     check: [(16r12345 bitShift: 12) = 16r12345000];
+             check: [(1 bitShift: 31) = (16r01000000 bitShift: 7)];
+             check: [(1 bitShift: 31) = 16r80000000];
+	     check: [((16rFFFFFFFF bitShift: 4) bitShift: -4) = 16rFFFFFFFF];
+	     check: [((16rFFFFFFFF bitShift: -4) bitShift: 4) = 16rFFFFFFF0];
+	"     check: [(1 bitShift: 32) = 16r100000000];"  "*** bug"
+	     check: [(16rF0000000 bitShift: 4) = 16rF00000000];
+	     check: [(16r70000000 bitShift: 4) = 16r700000000];
+	     check: [(16rF0000000 bitShift: -4) = 16r0F000000];
+	     check: [(16r70000000 bitShift: -4) = 16r07000000].
 
 	"51: Float#truncated"
 	self check: [0.125 truncated isMemberOf: SmallInteger];
