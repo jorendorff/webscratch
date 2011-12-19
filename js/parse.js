@@ -68,14 +68,25 @@ var smalltalk;
 
     function assert(b, msg) { if (!b) throw new Error("assertion failed: " + msg); }
 
+    // This parser first splits the whole body of a method into tokens, then
+    // turns the tokens into an AST in a separate pass. But it seems very
+    // unlikely now that Squeak actually tokenizes code like this (i.e. without
+    // feedback from the parser). For example,
+    //     #:a: ===> #':a:'
+    //     # :a: ===> #':a:'
+    //     #: asString ===> ':'
+    //     #(:a:) ===> (#: #a:)
+    // just seems impossible without using a different tokenization algorithm
+    // either inside constant lists or after #.
+
     // pseudo ::= nil | true | false | self | super | thisContext
-    // identifier ::= /[A-Za-z][0-9A-Za-z]*(:([A-Za-z][0-9A-Za-z]*:)*?)/
+    // identifier ::= /:?[A-Za-z](?:[0-9A-Za-z]|:[A-Za-z])*:?/
     // comment ::= /"(?:[^"]|"")*"/
     // string ::= /'(?:[^']|'')*'/
     // number ::= /[0-9][0-9A-Zre.]*/
     //    --less buggy: [0-9]+r?[0-9A-Z]*(?:\.[0-9A-Z]+)?(?:e[0-9]+)?
     //    --refining: (?:([0-9]*)r)?([0-9A-Z]*(?:\.[0-9A-Z]+)?(?:e([0-9]+))
-    // character ::= /\$./
+    // character ::= /\$(?:.|\r|\n)/
     // literal ::= number | character | string | symbol
     // operator ::= /[-+`\\/*\\\\~<=>@%|&?!,]+/    (at a guess)
     // punctuation ::= ":=" | /[_\[\]{}.:|#]/
@@ -85,7 +96,7 @@ var smalltalk;
     var token_re = new RegExp(
         "\\s*(" +
             '"(?:[^"]|"")*"|' +  // comment
-            "[A-Za-z][0-9A-Za-z]*(?::(?:[A-Za-z][0-9A-Za-z]*:)*)?|" + // identifier
+            ":?[A-Za-z](?:[0-9A-Za-z]|:[A-Za-z])*:?|" + // identifier
             "[0-9]+r?[0-9A-Z]*(?:\\.[0-9A-Z]+)?(?:e[0-9]+)?|" + // number literal
             "\\$(?:.|\\n|\\r)|" + // character literal
             "'(?:[^']|'')*'|" + // string literal
