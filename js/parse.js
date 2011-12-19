@@ -87,7 +87,7 @@ var smalltalk;
             '"(?:[^"]|"")*"|' +  // comment
             "[A-Za-z][0-9A-Za-z]*(?::(?:[A-Za-z][0-9A-Za-z]*:)*)?|" + // identifier
             "[0-9]+r?[0-9A-Z]*(?:\\.[0-9A-Z]+)?(?:e[0-9]+)?|" + // number literal
-            "\\$.|" + // character literal
+            "\\$(?:.|\\n)|" + // character literal
             "'(?:[^']|'')*'|" + // string literal
             ":=|" + // special assignment token
             "[-+`\\/*\\\\~<=>@%|&?!,]+|" + // operator
@@ -116,7 +116,7 @@ var smalltalk;
         return a;
     }
 
-    function parse(s, mode, cls, methodKind) {
+    function parse(s, mode) {
         // === basics
 
         function check(b, msg) {
@@ -125,6 +125,8 @@ var smalltalk;
         }
 
         function fail(msg) {
+            print(p);
+            print(tokens.length);
             throw new Error(msg + " near `" + tokens.slice(p - 10, p + 10).join(" ") + "`");
         }
 
@@ -601,9 +603,14 @@ var smalltalk;
             var selector = pair[0];
             var args = pair[1];
             var loc = locals();
-            var prim = undefined;
             var body = withScope(args.concat(loc), exprSeq, undefined);
             return MethodDefinition(selector, args, loc, body);
+        }
+
+        function methodNoArgs() {
+            var loc = locals();
+            var body = withScope(loc, exprSeq, undefined);
+            return MethodDefinition(null, [], loc, body);
         }
 
         // SqueakSource ::= string ! SqueakSourceElement*
@@ -612,11 +619,17 @@ var smalltalk;
         // classComment ::= "!" identifier "commentStamp:" string "prior:" number "!" <<raw text>> "!"
         // method ::= "!" identifier "class"? "methodsFor:" string ("stamp:" string)? "!" methodDefinition "!" "!"
 
+        var allowedParsers = {
+            method: methodDefinition,
+            expr: expr,
+            methodNoArgs: methodNoArgs
+        };
+        assert(allowedParsers.hasOwnProperty(mode));
+        var selectedParser = allowedParsers[mode];
+
         var tokens = tokenize(s);
         var p = 0;
-
-        assert(mode === "method" || mode === "expr");
-        return mode === "method" ? methodDefinition() : expr();
+        return selectedParser();
     }
 
 
@@ -721,7 +734,7 @@ var smalltalk;
                 check(className in classes, "method has unrecognized class name");
                 var methodGroup = x.message.args[0].value;
                 var cls = classes[className];
-                var def = parse(m[5].replace(/!!/g, '!'), "method", cls, kind);
+                var def = parse(m[5].replace(/!!/g, '!'), "method");
                 if (def.selector in cls[kind]) {
                     console.warn("Method defined more than once: " +
                                  cls.name + (kind === 'classMethods' ? " class" : "") + "#" +
@@ -737,7 +750,7 @@ var smalltalk;
                     // this seems to be unparseable nonsense
                     // do nothing
                 } else {
-                    parse(m[6].replace(/!!/g, '!'), "expr", cls);
+                    parse(m[6].replace(/!!/g, '!'), "expr");
                 }
             } else {
                 // long row of dashes or blank line, ignore
@@ -762,6 +775,14 @@ var smalltalk;
 
     function parseExpr(s) {
         return parse(s, "expr");
+    }
+
+    function parseMethod(s) {
+        return parse(s, "method");
+    }
+
+    function parseMethodNoArgs(s) {
+        return parse(s, "methodNoArgs");
     }
 
     // Return an object G such that G[s1][s2] is true if there is a
@@ -862,7 +883,9 @@ var smalltalk;
     smalltalk = {
         tokenize: tokenize,
         parseSqueakSource: parseSqueakSource,
+        parseMethod: parseMethod,
         parseExpr: parseExpr,
+        parseMethodNoArgs: parseMethodNoArgs,
         callGraph: callGraph,
         characters: characters
     };
