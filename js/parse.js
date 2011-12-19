@@ -87,7 +87,7 @@ var smalltalk;
             '"(?:[^"]|"")*"|' +  // comment
             "[A-Za-z][0-9A-Za-z]*(?::(?:[A-Za-z][0-9A-Za-z]*:)*)?|" + // identifier
             "[0-9]+r?[0-9A-Z]*(?:\\.[0-9A-Z]+)?(?:e[0-9]+)?|" + // number literal
-            "\\$(?:.|\\n)|" + // character literal
+            "\\$(?:.|\\n|\\r)|" + // character literal
             "'(?:[^']|'')*'|" + // string literal
             ":=|" + // special assignment token
             "[-+`\\/*\\\\~<=>@%|&?!,]+|" + // operator
@@ -125,8 +125,6 @@ var smalltalk;
         }
 
         function fail(msg) {
-            print(p);
-            print(tokens.length);
             throw new Error(msg + " near `" + tokens.slice(p - 10, p + 10).join(" ") + "`");
         }
 
