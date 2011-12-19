@@ -35,6 +35,7 @@ load("../parse.js");
             throw new Error("got: " + uneval(actual) + ", expected: " + uneval(expected) + " - " + msg);
     }
 
+    // Test tokenization.
     ["\0", "\t", "\n", "\r", "0", "'", "$", "\x7f", "\x80", "\xff"].forEach(function (ch) {
         assertEquals(smalltalk.parseExpr("$" + ch), {type: "Character", value: ch});
     });
@@ -43,6 +44,26 @@ load("../parse.js");
         assertEquals(smalltalk.parseExpr("#" + s), {type: "Symbol", value: s});
     });
 
+    var a = {type: "Symbol", value: "a"};
+    ["#a", "#\n'a'", "####a", "# # # # a", "# # # #\n\ta"].forEach(function (s) {
+        assertEquals(smalltalk.parseExpr(s), a);
+    });
+
+    // Test parsing methods with arguments.
+    var foobar = {
+        type: "MethodDefinition",
+        selector: "foo:",
+        args: ["bar"],
+        locals: [],
+        body: {
+            type: "ExprSeq",
+            seq: [{type: "Nil"}]
+        }
+    };
+    assertEquals(smalltalk.parseMethod('foo: bar nil.'), foobar);
+    assertEquals(smalltalk.parseMethod('foo:bar nil.'), foobar);
+
+    // Test parsing a block with an argument.
     var simpleBlock = {
         type: "Block",
         params: ["i"],
@@ -55,7 +76,6 @@ load("../parse.js");
 
     assertEquals(smalltalk.parseExpr("[:i|i]"), simpleBlock);
     assertEquals(smalltalk.parseExpr(" [ : i | i ] "), simpleBlock);
-
 
 })();
 

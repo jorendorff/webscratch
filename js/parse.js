@@ -96,10 +96,11 @@ var smalltalk;
     var token_re = new RegExp(
         "\\s*(" +
             '"(?:[^"]|"")*"|' +  // comment
-            ":?[A-Za-z](?:[0-9A-Za-z]|:[A-Za-z])*:?|" + // identifier
+            "#[ \r\n\t]*:?[A-Za-z](?:[0-9A-Za-z]|:[A-Za-z])*:?|" +  // symbol
+            "[A-Za-z][0-9A-Za-z]*:?|" + // identifier
             "[0-9]+r?[0-9A-Z]*(?:\\.[0-9A-Z]+)?(?:e[0-9]+)?|" + // number literal
             "\\$(?:.|\\n|\\r)|" + // character literal
-            "'(?:[^']|'')*'|" + // string literal
+            "(?:#[ \r\n\t]*)?'(?:[^']|'')*'|" + // string literal or symbol
             ":=|" + // special assignment token
             "[-+`\\/*\\\\~<=>@%|&?!,]+|" + // operator
             "$|" + // end of input
@@ -290,6 +291,11 @@ var smalltalk;
             return token.substring(1, token.length - 1).replace(/''/g, "'");
         }
 
+        function stripOctothorpe(t) {
+            var match = /^#[ \n\r\t]*/.exec(t);
+            return match === null ? t : t.substring(match[0].length);
+        }
+
         // constantToken :: = pseudo | identifier | literal | operator | punctuation
         // constant ::= constantToken | constantArray | "(" constant* ")"
         function constant() {
@@ -297,6 +303,7 @@ var smalltalk;
 
             while (t === "#")
                 t = tokens[++p];
+            t = stripOctothorpe(t);
 
             if (t === '(') {
                 return constantArray();
@@ -367,9 +374,11 @@ var smalltalk;
             } else if (t[0] === "'") {
                 p++;
                 return String(parseString(t));
-            } else if (t === "#") {
+            } else if (t.charAt(0) === "#") {
                 while (t === "#")
                     t = tokens[++p];
+                if (t.charAt(0) === "#")
+                    t = stripOctothorpe(t);
                 if (t === "(") {
                     return constantArray();
                 } else if (t.match(/^[A-Za-z]/) || isOperator(t) || isPunctuation(t) || t === ")") {
@@ -553,14 +562,9 @@ var smalltalk;
         function block() {
             require("[");
             var params = [], loc, body;
-            while (tokens[p][0] === ":") {
-                var id;
-                if (tokens[p] === ":") {
-                    p++;
-                    id = tokens[p++];
-                } else {
-                    id = tokens[p++].substring(1);
-                }
+            while (tokens[p] === ":") {
+                p++;
+                var id = tokens[p++];
                 check(isId(id), 'expected identifier after ":" for block parameter name');
                 check(!isPseudo(id), "variable name already used: " + id);
                 params[params.length] = id;
