@@ -12,17 +12,50 @@ load("../parse.js");
             throw new Error("got: " + uneval(actual) + ", expected: " + uneval(expected) + " - " + msg);
     }
 
+    function assertEquals(actual, expected, msg) {
+        function equals(a, b) {
+            if (a === b)
+                return true;
+            if (typeof a !== 'object' || typeof b !== 'object')
+                return false;
+            if (!equals(Object.getPrototypeOf(a), Object.getPrototypeOf(b)))
+                return false;
+            var cls = Object.prototype.toString;
+            if (cls.call(a) !== cls.call(b))
+                return false;
+            if (Array.isArray(a))
+                return a.length === b.length && a.every(function (val, i) { return equals(val, b[i]); });
+            var anames = Object.getOwnPropertyNames(a).sort();
+            var bnames = Object.getOwnPropertyNames(b).sort();
+            return anames.length === bnames.length && anames.every(function (name, i) {
+                return name === bnames[i] && equals(a[name], b[name]);
+            });
+        }
+        if (!equals(actual, expected))
+            throw new Error("got: " + uneval(actual) + ", expected: " + uneval(expected) + " - " + msg);
+    }
+
     ["\0", "\t", "\n", "\r", "0", "'", "$", "\x7f", "\x80", "\xff"].forEach(function (ch) {
-        var expr = smalltalk.parseExpr("$" + ch);
-        assertEq(expr.type, "Character");
-        assertEq(expr.value, ch);
+        assertEquals(smalltalk.parseExpr("$" + ch), {type: "Character", value: ch});
     });
 
     ["a", "a:", "a:b:", ":", ":x", ":x:", ":x:y", ":x:y:"].forEach(function (s) {
-        var expr = smalltalk.parseExpr("#" + s);
-        assertEq(expr.type, "Symbol", "parsing #" + s);
-        assertEq(expr.value, s, "result of parsing #" + s);
+        assertEquals(smalltalk.parseExpr("#" + s), {type: "Symbol", value: s});
     });
+
+    var simpleBlock = {
+        type: "Block",
+        params: ["i"],
+        locals: [],
+        body: {
+            type: "ExprSeq",
+            seq: [{type: "Local", id: "i"}]
+        }
+    };
+
+    assertEquals(smalltalk.parseExpr("[:i|i]"), simpleBlock);
+    assertEquals(smalltalk.parseExpr(" [ : i | i ] "), simpleBlock);
+
 
 })();
 

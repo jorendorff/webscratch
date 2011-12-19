@@ -553,9 +553,14 @@ var smalltalk;
         function block() {
             require("[");
             var params = [], loc, body;
-            while (tokens[p] === ":") {
-                p++;
-                var id = tokens[p++];
+            while (tokens[p][0] === ":") {
+                var id;
+                if (tokens[p] === ":") {
+                    p++;
+                    id = tokens[p++];
+                } else {
+                    id = tokens[p++].substring(1);
+                }
                 check(isId(id), 'expected identifier after ":" for block parameter name');
                 check(!isPseudo(id), "variable name already used: " + id);
                 params[params.length] = id;
