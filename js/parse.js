@@ -664,7 +664,10 @@ var smalltalk;
         ")"].join("");
 
     function variableNames(s) {
-        return s.trimRight().split(/ /g);
+        var names = s.trimRight().split(/ /g);
+        if (names[names.length - 1] === "")
+            names.pop();
+        return names;
     }
 
     function parseSqueakSource(s) {
