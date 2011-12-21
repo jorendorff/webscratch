@@ -96,11 +96,11 @@ var smalltalk;
     var token_re = new RegExp(
         "\\s*(" +
             '"(?:[^"]|"")*"|' +  // comment
-            "#[ \r\n\t]*:?[A-Za-z](?:[0-9A-Za-z]|:[A-Za-z])*:?|" +  // symbol
+            "#[ \\r\\n\\t]*:?[A-Za-z](?:[0-9A-Za-z]|:[A-Za-z])*:?|" +  // symbol
             "[A-Za-z][0-9A-Za-z]*:?|" + // identifier
             "[0-9]+r?[0-9A-Z]*(?:\\.[0-9A-Z]+)?(?:e[+-]?[0-9]+)?|" + // number literal
             "\\$(?:.|\\n|\\r)|" + // character literal
-            "(?:#[ \r\n\t]*)?'(?:[^']|'')*'|" + // string literal or symbol
+            "(?:#[ \\r\\n\\t]*)?'(?:[^']|'')*'|" + // string literal or symbol
             ":=|" + // special assignment token
             "[-+`\\/*\\\\~<=>@%|&?!,]+|" + // operator
             "$|" + // end of input
@@ -113,15 +113,20 @@ var smalltalk;
         while (true) {
             var point = token_re.lastIndex;
             var match = token_re.exec(s);
-            if (match.index !== point) {
-                var lineno = s.substring(0, point).split("\n").length;
-                var line = s.substring(point).split("\n")[0];
-                throw new Error("Internal error (match.index=" + match.index + ", point=" + point + ") tokenizing line " + lineno + ": " +
-                                uneval(line));
+            if (match === null || match.index !== point) {
+                var lines = s.split(/\r\n?|\n/g);
+                var lineno = 0, gas = point;
+                while (gas > lines[lineno].length + 1) {
+                    gas -= lines[lineno].length + 1;
+                    lineno++;
+                }
+                var line = lines[lineno].substring(gas);
+                throw new Error("Syntax error at line " + (lineno + 1) + ", column " + gas + ": " + uneval(line));
             }
             match = match[1];
             if (match.length === 0)
                 break;
+
             if (match[0] !== '"')
                 a[i++] = match;
         }
@@ -662,14 +667,22 @@ var smalltalk;
     }
 
 
+    var cr = "(?:\\r\\n?|\\n)";
     var directive_re = [
         "(?:",
-        "('(?:[^!]|!!)*!\n)", // first line of file
-        "|([A-Za-z][A-Za-z0-9]* (?:subclass: |(?:variable(?:|Byte|Word)|weak)Subclass: |class\\b)(?:[^!]|!!)*)!\n",
-        "|!([A-Za-z][A-Za-z0-9]* commentStamp: (?:[^!]|!!)*)!\n(?:[^!]|!!)*!\n(?:\\]style\\[(?:[^!]|!!)*!\n)?\n(?:\n|$)",
-        "|\n?!([A-Za-z][A-Za-z0-9]* (?:class )?methodsFor: (?:[^!]|!!)*)!\n((?:[^!]|!!)*)(?:!\n\\]style\\[(?:[^!]|!!)*)?! !\n",
-        '|"[- ]+"!\n\n', // big long line of dashes before class
-        "|\n", // random newlines appear between classes
+        "('(?:[^!]|!!)*!" + cr + ")", // first line of file
+        "|([A-Za-z][A-Za-z0-9]* (?:subclass: |(?:variable(?:|Byte|Word)|weak)Subclass: |class\\b)(?:[^!]|!!)*)!" + cr,
+        "|!([A-Za-z][A-Za-z0-9]* commentStamp: (?:[^!]|!!)*)!" + cr +
+            "(?:[^!]|!!)*!" + cr +
+            "(?:\\]style\\[(?:[^!]|!!)*!" + cr +
+            ")?" + cr +
+            "(?:\\r\\n?|\\n|$)",
+        "|" + cr +
+            "?!([A-Za-z][A-Za-z0-9]* (?:class )?methodsFor: (?:[^!]|!!)*)!" + cr +
+            "((?:[^!]|!!)*)(?:!" + cr +
+            "\\]style\\[(?:[^!]|!!)*)?! !" + cr,
+        '|"[- ]+"!' + cr + cr, // big long line of dashes before class
+        "|" + cr + "", // random newlines appear between classes
         "|\x0c", // form feed, good grief
         "|([A-Za-z](?:[^!]|!!)*)!", // any expression
         ")"].join("");
@@ -691,7 +704,7 @@ var smalltalk;
         function lineno(i) {
             if (i === undefined)
                 i = point;
-            return s.substring(0, i).split("\n").length;
+            return s.substring(0, i).split(/\r\n?|\n/g).length;
         }
 
         var subclass_re = /^(subclass|(?:variable(?:Word|Byte|)|weak)Subclass):instanceVariableNames:classVariableNames:poolDictionaries:category:$/;
