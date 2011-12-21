@@ -236,18 +236,18 @@ var smalltalk;
 
         var BigInt = {
             str2bigInt: str2bigInt,
-            bigInt2str: bigInt2str
+            bigInt2str: bigInt2str,
+            int2bigInt: int2bigInt,
+            mult: mult
         };
 
         function number(s) {
-            var m = /(-)?([0-9]+)(r[0-9A-Z]+)?(\.[0-9A-Z]+)?(e([+-]?[0-9]+))?/.exec(s);
+            var m = /(-)?([0-9]+)(r[0-9A-Z]+)?(\.[0-9A-Z]+)?(?:e([+-]?[0-9]+))?/.exec(s);
             var sign = m[1] || '';
 
             check(m !== null, "wack number literal " + s);
-            if (m[4] !== undefined || m[5] !== undefined) {
-                // Decimal point or scientific notation found.
-                // Bug: if there is no decimal point and the exponent is
-                // positive, this should produce an Integer node.
+            if (m[4] !== undefined || (m[5] !== undefined && Number(m[5]) < 0)) {
+                // Decimal point or scientific notation with negative exponent.
                 check(m[3] === undefined, "not supported: decimal points or scientific notation in non-decimal number literals " + s);
                 return Float(+s);
             }
@@ -269,14 +269,23 @@ var smalltalk;
                 check(v < base, "digit " + c + " is out of range for base " + base + " in number literal " + s);
             }
 
-            // Convert to hex. (This is pretty silly in the common case that
-            // it's a decimal constant that fits in a SmallInteger, but it's
-            // correct.)
-            var hex = digits;
-            if (base !== 16)
-                hex = bigInt2str(str2bigInt(digits, base, 0), 16);
+            // Parse the digits as a BigInt.
+            var intval = BigInt.str2bigInt(digits, base, 0);
 
-            var n = '0x' + hex;
+            if (m[5] !== undefined) {
+                // No decimal point, but scientific notation with positive exponent.
+                var exp = Number(m[5]);
+                var baseAsBigInt = BigInt.int2bigInt(base, 0, 0);
+                for (var i = 0; i < exp; i++)
+                    intval = BigInt.mult(intval, baseAsBigInt);
+            }
+
+            // Convert to hex. (This is pretty silly in the common case that
+            // it's a decimal constant with no exponent that fits in a
+            // SmallInteger, but it's correct.)
+            var hex = BigInt.bigInt2str(intval, 16);
+
+            var n = parseInt(hex, 16);
             if (sign)
                 n = -n;
             if ((0xc0000000|0) < n && n <= 0x3fffffff)
