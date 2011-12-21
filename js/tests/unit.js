@@ -49,6 +49,10 @@ load("../parse.js");
         assertEquals(smalltalk.parseExpr(s), a);
     });
 
+    ["-1e6", "1e300", "1e-300", "-1e-300", "1.0e6"].forEach(function (s) {
+        assertEquals(smalltalk.parseExpr(s), {type: "Float", value: Number(s)});
+    });
+
     // Test parsing methods with arguments.
     var foobar = {
         type: "MethodDefinition",

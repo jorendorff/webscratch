@@ -84,8 +84,8 @@ var smalltalk;
     // comment ::= /"(?:[^"]|"")*"/
     // string ::= /'(?:[^']|'')*'/
     // number ::= /[0-9][0-9A-Zre.]*/
-    //    --less buggy: [0-9]+r?[0-9A-Z]*(?:\.[0-9A-Z]+)?(?:e[0-9]+)?
-    //    --refining: (?:([0-9]*)r)?([0-9A-Z]*(?:\.[0-9A-Z]+)?(?:e([0-9]+))
+    //    --less buggy: [0-9]+r?[0-9A-Z]*(?:\.[0-9A-Z]+)?(?:e[+-]?[0-9]+)?
+    //    --refining: (?:([0-9]*)r)?([0-9A-Z]*(?:\.[0-9A-Z]+)?(?:e([+-]?[0-9]+))
     // character ::= /\$(?:.|\r|\n)/
     // literal ::= number | character | string | symbol
     // operator ::= /[-+`\\/*\\\\~<=>@%|&?!,]+/    (at a guess)
@@ -98,7 +98,7 @@ var smalltalk;
             '"(?:[^"]|"")*"|' +  // comment
             "#[ \r\n\t]*:?[A-Za-z](?:[0-9A-Za-z]|:[A-Za-z])*:?|" +  // symbol
             "[A-Za-z][0-9A-Za-z]*:?|" + // identifier
-            "[0-9]+r?[0-9A-Z]*(?:\\.[0-9A-Z]+)?(?:e[0-9]+)?|" + // number literal
+            "[0-9]+r?[0-9A-Z]*(?:\\.[0-9A-Z]+)?(?:e[+-]?[0-9]+)?|" + // number literal
             "\\$(?:.|\\n|\\r)|" + // character literal
             "(?:#[ \r\n\t]*)?'(?:[^']|'')*'|" + // string literal or symbol
             ":=|" + // special assignment token
@@ -244,9 +244,11 @@ var smalltalk;
             var sign = m[1] || '';
 
             check(m !== null, "wack number literal " + s);
-            if (m[4] !== undefined) {
-                // Decimal point found.
-                check(m[3] === undefined, "not supported: decimal points in non-decimal number literals " + s);
+            if (m[4] !== undefined || m[5] !== undefined) {
+                // Decimal point or scientific notation found.
+                // Bug: if there is no decimal point and the exponent is
+                // positive, this should produce an Integer node.
+                check(m[3] === undefined, "not supported: decimal points or scientific notation in non-decimal number literals " + s);
                 return Float(+s);
             }
 
