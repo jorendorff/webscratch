@@ -127,15 +127,48 @@
         return candidates;
     }
 
+    function StaticClassInfo(classes_ast) {
+        this.classes_ast = classes_ast;
+    }
+    StaticClassInfo.prototype = {
+        hasClass: function hasClass(cls) {
+            return cls in this.classes_ast;
+        },
+        getSuperclass: function getSuperclass(cls) {
+            return this.classes_ast[cls].superclassName;
+        },
+        hasInstVar: function hasInstVar(cls, name) {
+            return this.classes_ast[cls].instanceVariableNames.indexOf(name) !== -1;
+        },
+        hasClassVar: function hasClassVar(cls, name) {
+            return this.classes_ast[cls].classVariableNames.indexOf(name) !== -1;
+        },
+        getAllInstVarNames: function getAllInstVarNames(cls) {
+            var scls = this.classes_ast[cls];
+            var names = [];
+            while (true) {
+                names = scls.instanceVariableNames.concat(names);
+                if (scls.superclassName === null)
+                    break;
+                scls = this.classes_ast[scls.superclassName];
+            }
+            return names;
+        },
+        getClassKind: function getClassKind(cls) {
+            return this.classes_ast[cls].subclassKind;
+        }
+    };
+
     // Compilation is a whole-program operation.
     // We common up constants across the whole program, and
     // optimizations are planned that would be unsound if we didn't see
     // the whole program.
-    function Compilation(classes) {
-        // Classes is provided by the runtime, initially populated with
-        // a few core classes and some primitive methods.
-        this.classes = classes;
-        this.inlineable = inlineableMethods(classes);
+    function Compilation(classInfo) {
+        this.classInfo = classInfo;
+        if (classInfo instanceof StaticClassInfo)
+            this.inlineable = inlineableMethods(classInfo.classes_ast);
+        else
+            this.inlineable = Object.create(null);
 
         // Support for Smalltalk constants
         this.constantDecls = [];
@@ -253,7 +286,7 @@
             }
         },
 
-        translateObjectGraph: function translateObjectGraph(classes, ast) {
+        translateObjectGraph: function translateObjectGraph(ast) {
             var comp = this;
 
             function translateValue(node) {
@@ -284,18 +317,6 @@
                 }
             }
 
-            function translateClass(node) {
-                if (node.type === "Identifier") {
-                    return '_' + node.id;
-                } else if (node.type === "MessageExpr") {
-                    assertEq(node.message.selector, "class");
-                    assertEq(node.receiver.type, "Identifier");
-                    return '_' + node.receiver.id + '.__class';
-                } else {
-                    throw new Error("unrecognized class in object graph");
-                }
-            }
-
             assertEq(ast.type, "MethodDefinition");
             var stmts = ast.body.seq;
             assertEq(stmts.length, 2);
@@ -321,7 +342,7 @@
                 if (objid === "Smalltalk") {
                     objCode = "'S'";
                 } else {
-                    if (!(objid in classes))
+                    if (!comp.classInfo.hasClass(objid))
                         continue;
                     objCode = "_" + objid;
                 }
@@ -341,15 +362,24 @@
                 var objDescArr = objectDescs[i].elements;
                 assert(objDescArr.length === 2 || objDescArr.length === 3);
 
+                // Translate the class of the object.
+                // cls will be the name of the class, if any; and null
+                // if the class is a metaclass.
+                var cls;
                 var classId = objDescArr[0];
-                var cls = null, found;
+                var found;
                 if (classId.type === "Identifier") {
-                    cls = classes[classId.id];
-                    found = (cls !== undefined);
-                } else {
-                    assertEq(classId.type, "MessageExpr");
+                    cls = classId.id;
+                    found = comp.classInfo.hasClass(cls);
+                    s += '_' + cls;
+                } else if (classId.type === "MessageExpr") {
                     assertEq(classId.receiver.type, "Identifier");
-                    found = (classes[classId.receiver.id] !== undefined);
+                    assertEq(classId.message.selector, "class");
+                    cls = null;
+                    found = comp.classInfo.hasClass(classId.receiver.id);
+                    s += '_' + classId.receiver.id + '.__class';
+                } else {
+                    throw new Error("unrecognized class in object graph");
                 }
                 if (!found) {
                     // This object is of a class that isn't in the source file.
@@ -359,33 +389,21 @@
                     continue;
                 }
 
-                s += translateClass(classId);
-
-
-                // Accumulate all the instance variable names of cls.
-                var ivNames;
-                if (cls === null) {
-                    ivNames = [];
-                } else {
-                    ivNames = cls.instanceVariableNames;
-                    var scls = cls;
-                    while (scls.superclassName !== null) {
-                        scls = classes[scls.superclassName];
-                        ivNames = scls.instanceVariableNames.concat(ivNames);
-                    }
-                }
+                // Translate instance variable values.
                 var ivValues = objDescArr[1];
-                if (cls) {
+                if (classId.type === "Identifier") {
+                    var ivNames = comp.classInfo.getAllInstVarNames(classId.id);
                     assertEq(ivValues.elements.length, ivNames.length,
                              "expected " + ivNames.length + " fields in " + classId.id + ": " +
-                             cls.instanceVariableNames.join(", "));
+                             ivNames.join(", "));
                 }
                 s += ", [" + ivValues.elements.map(translateValue).join(", ") + "]";
 
+                // Translate variable-length data, if any.
                 if (objDescArr.length >= 3) {
-                    // Variable-length data.
                     var vld = objDescArr[2];
-                    if (cls && cls.subclassKind === "variableByteSubclass") {
+
+                    if (cls !== null && comp.classInfo.getClassKind(cls) === "variableByteSubclass") {
                         // Binary data.
                         var octet = function (n) {
                             assertEq(n.type, "Integer");
@@ -393,7 +411,7 @@
                             return '??';
                         };
                         s += ", '" + vld.elements.map(octet).join("") + "'";
-                    } else if (cls && cls.subclassKind === "variableWordSubclass") {
+                    } else if (cls != null && comp.classInfo.getClassKind(cls) === "variableWordSubclass") {
                         // Word-sized binary data.
                         var word = function (n) {
                             var v;
@@ -477,13 +495,13 @@
 
             function translateStmt(n, indent) {
                 if (isEffectFree(n)) {
-                    console.warn("useless expression in " + className + "#" + selector);
+                    console.warn("useless expression in " + className + ">>" + selector);
                     return "";
                 }
 
                 switch (n.type) {
                 case "ArrayExpr":
-                    console.warn("unused array expression in " + className + "#" + selector);
+                    console.warn("unused array expression in " + className + ">>" + selector);
                     break;
 
                 case "AnswerExpr":
@@ -621,14 +639,14 @@
                     return toJSName(n.id);
 
                 case "Identifier":
-                    for (var cls = comp.currentClass; cls; cls = comp.classes[cls.superclassName]) {
+                    for (var cls = comp.currentClass; cls; cls = comp.classInfo.getSuperclass(cls)) {
                         // Is this really the right order?
-                        if (cls.instanceVariableNames.indexOf(n.id) !== -1)
+                        if (comp.classInfo.hasInstVar(cls, n.id))
                             return thisObject() + "._" + n.id;
-                        else if (cls.classVariableNames.indexOf(n.id) !== -1)
-                            return "_" + cls.name + "._" + n.id;
+                        else if (comp.classInfo.hasClassVar(cls, n.id))
+                            return "_" + cls + "._" + n.id;
                     }
-                    if (n.id in comp.classes)
+                    if (comp.classInfo.hasClass(n.id))
                         return "_" + n.id;
                     if (comp.unknownNames.indexOf(n.id) === -1) {
                         comp.unknownNames.push(n.id);
@@ -638,7 +656,6 @@
 
                 case "Primitive":
                     throw new Error("Unexpected <primitive:> in expression");
-
 
                 case "ConstantArray":
                     {
@@ -714,7 +731,7 @@
                                 args = thisObject() + ", " + args;
                             else
                                 args = thisObject();
-                            return "_" + comp.currentClass.superclassName +
+                            return "_" + comp.classInfo.getSuperclass(comp.currentClass) +
                                    (isInstanceMethod ? ".__im" : "") +
                                    messageJSName(msg) + ".call(" + args + ")";
                         }
@@ -825,7 +842,7 @@
         },
 
         translateClass: function translateClass(cls) {
-            this.currentClass = cls;
+            this.currentClass = cls.name;
             try {
                 var s = "    // " + cls.name + "\n";
                 for (var i = 0; i < cls.weirdness.length; i++)
@@ -865,14 +882,14 @@
 
     };
 
-    function translate(classes, objdump) {
-        var c = new Compilation(classes);
+    function translate(classes_ast, objects_ast) {
+        var c = new Compilation(new StaticClassInfo(classes_ast));
 
         // Compile all the classes.
         var classdefs = Object.create(null);
-        for (var name in classes) {
-            classdefs[name] = {superclassName: classes[name].superclassName,
-                               code: c.translateClass(classes[name]),
+        for (var name in classes_ast) {
+            classdefs[name] = {superclassName: classes_ast[name].superclassName,
+                               code: c.translateClass(classes_ast[name]),
                                mark: false};
         }
 
@@ -894,7 +911,7 @@
             write(name);
 
         // Compile the object graph.
-        var classinit_code = c.translateObjectGraph(classes, objdump);
+        var classinit_code = c.translateObjectGraph(objects_ast);
 
         return ("(function (__smalltalk) {\n" +
                 "    var $B = __smalltalk.Block;\n" +
