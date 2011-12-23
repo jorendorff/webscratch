@@ -26,24 +26,21 @@
 ##     and selecting "workspace".
 ##
 ##   - Paste this snippet of code into the workspace:
-##         |f|
-##         f _ FileStream newFileNamed: 'ScratchSources.st'.
-##         SystemOrganization categories do:
-##             [:c | SystemOrganization fileOutCategory: c on: f].
-##         f close.
+##         Compiler evaluate: (FileStream readOnlyFileNamed:
+##             (FileDirectory default relativeToFullPath: '../../../st/dumpImage.st'))
 ##
 ##   - Select the code, control+click on a part of the window below all the
 ##     text, and select "do it (d)".
 ##
-##     If it asks you whether to overwrite the file, say yes.
+##     If it asks you whether to overwrite a file, say yes.
 ##
 ##     When it asks you whether to "FileOut selected sharedPools" or
 ##     "FileOut sharedPool TextConstants", say yes.
 ##
-##   - Close Squeak. Don't bother saving changes.
+##     It will take a really long time because it's dumping 15MB+ of data.
+##     When it's done, it'll say 'done' in the Workspace.
 ##
-##   - Run this command to fix up the old-school Mac newlines in the file:
-##         perl -p -i -e 's/\r/\n/g' ScratchSources.st
+##   - Close Squeak. Don't bother saving changes.
 
 import os, zipfile, codecs, subprocess
 
@@ -86,11 +83,16 @@ def main():
     #
     # Queasymaking. Just ignore it. It works.
     #
+    def recode(source, dest):
+        with codecs.open(source, 'rU', 'iso8859-1') as infile:
+            junk = infile.read()
+        with codecs.open(dest, 'w', 'utf-8') as outfile:
+            outfile.write(junk)
     sources_utf8 = os.path.join(sourcesdir, 'ScratchSource1.4', 'ScratchSources.st.utf8')
-    with codecs.open(sources_latin1, 'rU', 'iso8859-1') as infile:
-        st = infile.read()
-    with codecs.open(sources_utf8, 'w', 'utf-8') as outfile:
-        outfile.write(st)
+    recode(sources_latin1, sources_utf8)
+    objdump_latin1 = os.path.join(sourcesdir, 'ScratchSource1.4', 'objectdump.txt')
+    objdump_utf8 = os.path.join(sourcesdir, 'ScratchSource1.4', 'objectdump.txt.utf8')
+    recode(objdump_latin1, objdump_utf8)
     print
 
     # Check for a JS engine.
@@ -99,6 +101,13 @@ def main():
         print "The build script requires Mozilla's JS shell to be installed."
         print "export JS='full/path/to/js -m -n' and try again!"
         return
+
+    # Run unit tests.
+    cmd = os.environ['JS'] + ' unit.js'
+    tests_dir = os.path.join(rootdir, 'js', 'tests')
+    print 'cd %s && %s' % (tests_dir, cmd)
+    subprocess.check_call(cmd, shell=True, cwd=tests_dir)
+    print
 
     # Run a test.
     cmd = os.environ['JS'] + ' handmade-test.js'
@@ -109,7 +118,7 @@ def main():
 
     # Compile ScratchSources.st to JS.
     sources_js = os.path.join(builddir, 'ScratchSources.js')
-    cmd = os.environ['JS'] + ' main.js "' + sources_utf8 + '"'
+    cmd = os.environ['JS'] + ' main.js "' + sources_utf8 + '" "' + objdump_utf8 + '"'
     print cmd, " > " + sources_js
     with open(sources_js, 'wb') as outfile:
         subprocess.check_call(cmd, shell=True, cwd=os.path.join(rootdir, 'js'), stdout=outfile)

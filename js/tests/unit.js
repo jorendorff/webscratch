@@ -91,6 +91,6 @@ load("../parse.js");
 
     assertEquals(smalltalk.parseExpr("[:i|i]"), simpleBlock);
     assertEquals(smalltalk.parseExpr(" [ : i | i ] "), simpleBlock);
-
+    print("pass");
 })();
 

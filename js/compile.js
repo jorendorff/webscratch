@@ -155,7 +155,7 @@
         // Per-class state
         this.currentClass = null;
     }
-    
+
     var subclassKindToFlags = {
         "subclass": 0,
         "variableSubclass": 1,
@@ -235,6 +235,188 @@
 
         gensym: function gensym() {
             return "$" + this._nextsym++;
+        },
+
+        translateConstant: function translateConstant(n) {
+            switch (n.type) {
+            case "Nil":           return this.nil;
+            case "True":          return this.true_;
+            case "False":         return this.false_;
+            case "Character":     return this.getCharacter(n.value);
+            case "String":        return this.getString(n.value);
+            case "Symbol":        return this.getSymbol(n.value);
+            case "Float":         return this.getFloat(n.value);
+            case "Integer":       return this.getInteger(n.value);
+            case "LargeInteger":  return this.getLargeInteger(n.value);
+            default:
+                throw new Error("not a constant: " + JSON.stringify(n));
+            }
+        },
+
+        translateObjectGraph: function translateObjectGraph(classes, ast) {
+            var comp = this;
+
+            function translateValue(node) {
+                switch (node.type) {
+                case "Identifier":
+                    if (node.id === "NegativeInfinity")
+                        return comp.getFloat(-1/0);
+                    else if (node.id === "Infinity")
+                        return comp.getFloat(1/0);
+                    else if (node.id === "NaN")
+                        return comp.getFloat(0/0);
+                    throw new Error("unrecognized identifier: " + node.id);
+
+                case "Nil": case "True": case "False":
+                case "Integer": case "LargeInteger":
+                case "Float":
+                case "Character": case "String": case "Symbol":
+                    return comp.translateConstant(node);
+
+                case "MessageExpr":
+                    assertEq(node.receiver.id, "U");
+                    assertEq(node.message.selector, "at:");
+                    assertEq(node.message.args[0].type, "Integer");
+                    return "" + (node.message.args[0].value - 1);
+
+                default:
+                    throw new Error("unrecognized value in object graph");
+                }
+            }
+
+            function translateClass(node) {
+                if (node.type === "Identifier") {
+                    return '_' + node.id;
+                } else if (node.type === "MessageExpr") {
+                    assertEq(node.message.selector, "class");
+                    assertEq(node.receiver.type, "Identifier");
+                    return '_' + node.receiver.id + '.__class';
+                } else {
+                    throw new Error("unrecognized class in object graph");
+                }
+            }
+
+            assertEq(ast.type, "MethodDefinition");
+            var stmts = ast.body.seq;
+            assertEq(stmts.length, 2);
+
+            var xexpr = stmts[0];
+            assertEq(xexpr.type, "AssignExpr");
+            assertEq(xexpr.left.type, "Identifier");
+            assertEq(xexpr.left.id, "X");
+            assertEq(xexpr.right.type, "ArrayExpr");
+            var refDescs = xexpr.right.elements;
+
+            var refCode = [], n = 0;
+            for (var i = 0; i < refDescs.length; i++) {
+                var refDescArr = refDescs[i].elements;
+                assertEq(refDescArr.length, 3);
+                assertEq(refDescArr[0].type, "Identifier");
+                var objid = refDescArr[0].id;
+                assertEq(refDescArr[1].type, "Symbol");
+                var key = refDescArr[1].value;
+                var val = translateValue(refDescArr[2]);
+
+                var objCode;
+                if (objid === "Smalltalk") {
+                    objCode = "'S'";
+                } else {
+                    if (!(objid in classes))
+                        continue;
+                    objCode = "_" + objid;
+                }
+                refCode[n++] = "[" + objCode + ", '" + key + "', " + val + "]";
+            }
+
+            var uexpr = stmts[1];
+            assertEq(uexpr.type, "AssignExpr");
+            assertEq(uexpr.left.type, "Identifier");
+            assertEq(uexpr.left.id, "U");
+            assertEq(uexpr.right.type, "ArrayExpr");
+            var objectDescs = uexpr.right.elements;
+
+            var objectCode = [];
+            for (var i = 0; i < objectDescs.length; i++) {
+                var s = '[';
+                var objDescArr = objectDescs[i].elements;
+                assert(objDescArr.length === 2 || objDescArr.length === 3);
+
+                var classId = objDescArr[0];
+                var cls = null, found;
+                if (classId.type === "Identifier") {
+                    cls = classes[classId.id];
+                    found = (cls !== undefined);
+                } else {
+                    assertEq(classId.type, "MessageExpr");
+                    assertEq(classId.receiver.type, "Identifier");
+                    found = (classes[classId.receiver.id] !== undefined);
+                }
+                if (!found) {
+                    // This object is of a class that isn't in the source file.
+                    // This happens when loading the Scratch object dump with
+                    // the handmade-test.st source file.
+                    objectCode[i] = "null";
+                    continue;
+                }
+
+                s += translateClass(classId);
+
+
+                // Accumulate all the instance variable names of cls.
+                var ivNames;
+                if (cls === null) {
+                    ivNames = [];
+                } else {
+                    ivNames = cls.instanceVariableNames;
+                    var scls = cls;
+                    while (scls.superclassName !== null) {
+                        scls = classes[scls.superclassName];
+                        ivNames = scls.instanceVariableNames.concat(ivNames);
+                    }
+                }
+                var ivValues = objDescArr[1];
+                if (cls) {
+                    assertEq(ivValues.elements.length, ivNames.length,
+                             "expected " + ivNames.length + " fields in " + classId.id + ": " +
+                             cls.instanceVariableNames.join(", "));
+                }
+                s += ", [" + ivValues.elements.map(translateValue).join(", ") + "]";
+
+                if (objDescArr.length >= 3) {
+                    // Variable-length data.
+                    var vld = objDescArr[2];
+                    if (cls && cls.subclassKind === "variableByteSubclass") {
+                        // Binary data.
+                        var octet = function (n) {
+                            assertEq(n.type, "Integer");
+                            assert(n.value >= 0 && n.value < 256);
+                            return '??';
+                        };
+                        s += ", '" + vld.elements.map(octet).join("") + "'";
+                    } else if (cls && cls.subclassKind === "variableWordSubclass") {
+                        // Word-sized binary data.
+                        var word = function (n) {
+                            var v;
+                            if (n.type === "Integer") {
+                                v = n.value;
+                            } else {
+                                assertEq(n.type, "LargeInteger");
+                                v = parseInt(n.value, 16);
+                            }
+                            assert(v >= 0 && v <= 0xffffffff);
+                            return '????????';
+                        };
+                        s += ", '" + vld.elements.map(word).join("") + "'";
+                    } else {
+                        s += ", [" + vld.elements.map(translateValue).join(", ") + "]";
+                    }
+                }
+                s += ']';
+                objectCode[i] = s;
+            }
+
+            return ("__smalltalk.initObjectGraph([\n" + objectCode.join(",\n") + "\n], [\n" +
+                    refCode.join(",\n") + "\n]);\n");
         },
 
         translateMethod: function translateMethod(className, n, isInstanceMethod) {
@@ -419,9 +601,17 @@
 
             function translateExpr(n, prec, indent) {
                 switch (n.type) {
-                case "Nil": return comp.nil;
-                case "True": return comp.true_;
-                case "False": return comp.false_;
+                case "Nil":
+                case "True":
+                case "False":
+                case "Integer":
+                case "LargeInteger":
+                case "Float":
+                case "Character":
+                case "String":
+                case "Symbol":
+                    return comp.translateConstant(n);
+
                 case "Self": return thisObject();
 
                 case "ThisContext":
@@ -449,12 +639,6 @@
                 case "Primitive":
                     throw new Error("Unexpected <primitive:> in expression");
 
-                case "Character":     return comp.getCharacter(n.value);
-                case "String":        return comp.getString(n.value);
-                case "Symbol":        return comp.getSymbol(n.value);
-                case "Float":         return comp.getFloat(n.value);
-                case "Integer":       return comp.getInteger(n.value);
-                case "LargeInteger":  return comp.getLargeInteger(n.value);
 
                 case "ConstantArray":
                     {
@@ -681,9 +865,10 @@
 
     };
 
-    function translate(classes) {
+    function translate(classes, objdump) {
         var c = new Compilation(classes);
 
+        // Compile all the classes.
         var classdefs = Object.create(null);
         for (var name in classes) {
             classdefs[name] = {superclassName: classes[name].superclassName,
@@ -694,7 +879,6 @@
         // Sort the classes so that each class's superclass is defined
         // first.
         var classdef_code = [];
-        var classinit_code = [];
         function write(name) {
             var cd = classdefs[name];
             if (!cd)
@@ -703,34 +887,21 @@
                 if (cd.superclassName)
                     write(cd.superclassName);
                 classdef_code.push(cd.code);
-                if ("initialize" in classes[name].classMethods)
-                    classinit_code.push("    print('initializing " + name + "...'); _" + name + ".initialize();\n");
                 cd.mark = true;
             }
         }
-        function writeClasses(arr) {
-            for (var i = 0; i < arr.length; i++) {
-                var name = arr[i];
-                if (name in classdefs)
-                    write(name);
-            }
-        }
-        writeClasses(['Object', 'Float', 'Character', 'String', 'Symbol']);
-        classinit_code.push("\n    __smalltalk.init();\n\n");
-        writeClasses([
-            'Color',
-            'AbstractSound',
-            'SoundPlayer', // SoundMedia depends on this
-            'SampledSound' // SoundMedia depends on this
-        ]);
         for (var name in classdefs)
             write(name);
+
+        // Compile the object graph.
+        var classinit_code = c.translateObjectGraph(classes, objdump);
 
         return ("(function (__smalltalk) {\n" +
                 "    var $B = __smalltalk.Block;\n" +
                 (c.constantDecls.length === 0 ? "" : "    var\n" + c.constantDecls.join(",\n") + ";\n") +
                 classdef_code.join("") +
-                classinit_code.join("") +
+                "\n    __smalltalk.init();\n\n" +
+                classinit_code +
                 "});\n");
     }
 

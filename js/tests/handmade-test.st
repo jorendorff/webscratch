@@ -13776,7 +13776,8 @@ runTests
 	     testCompilerSelf;
 	     testIdentifiers;
 	     testIntegers;
-	     testPrimitives
+	     testPrimitives;
+	     testClassVars.
 ! !
 
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
@@ -13800,7 +13801,7 @@ testBasics
 	self check: [{1. 2. 3. 3. 5. 7. 12} isSorted].
 	self check: [{1. 2. 3. 3. 5. 4. 12} isSorted not].
 
-        self check: [self sailingYear = 1492].
+	self check: [self sailingYear = 1492].
 ! !
 
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
@@ -13842,11 +13843,11 @@ testIdentifiers
 testIntegers
 	self check: [(0 bitXor: 1) = 1].
 
-        self check: [(2 raisedTo: 31) = 2147483648].
-        self check: [((2 raisedTo: 31) // (2 raisedTo: 15)) = 65536].
+	self check: [(2 raisedTo: 31) = 2147483648].
+	self check: [((2 raisedTo: 31) // (2 raisedTo: 15)) = 65536].
 
-        self check: [16r3FFFFFFF class == SmallInteger].
-        "self check: [-16r40000000 class == SmallInteger]."  "bug: we fail to consider that it is negative when checking to see if it is in SmallInteger domain."
+	self check: [16r3FFFFFFF class == SmallInteger].
+	"self check: [-16r40000000 class == SmallInteger]."  "bug: we fail to consider that it is negative when checking to see if it is in SmallInteger domain."
 
 	self check: [16r3FFFFFFF + 1 = 16r40000000].
 	self check: [-16r40000000 negated = 16r40000000].
@@ -13854,7 +13855,7 @@ testIntegers
 	self check: [1 ~= 2].
 	self check: [(0 bitXor: 0) = 0].
 
-        " test integers outside the range of precise-valued JS Numbers "
+	" test integers outside the range of precise-valued JS Numbers "
 	self check: [16r0123456789ABCDEF0123456789ABCDEF = 1512366075204170929049582354406559215].
 	self check: [16r0123456789ABCDEF0123456789ABCDEF ~= 1512366075204170929049582354406559214].
 	self check: [16r0123456789ABCDEF0123456789ABCDEF ~= 1512366075204170929049582354406559216].
@@ -13866,8 +13867,8 @@ testPrimitives
 	self check: [(1 bitShift: 4) = 16];
 	     check: [(-1 bitShift: 4) = -16];
 	     check: [(16r12345 bitShift: 12) = 16r12345000];
-             check: [(1 bitShift: 31) = (16r01000000 bitShift: 7)];
-             check: [(1 bitShift: 31) = 16r80000000];
+	     check: [(1 bitShift: 31) = (16r01000000 bitShift: 7)];
+	     check: [(1 bitShift: 31) = 16r80000000];
 	     check: [((16rFFFFFFFF bitShift: 4) bitShift: -4) = 16rFFFFFFFF];
 	     check: [((16rFFFFFFFF bitShift: -4) bitShift: 4) = 16rFFFFFFF0];
 	"     check: [(1 bitShift: 32) = 16r100000000];"  "*** bug"
@@ -13906,6 +13907,14 @@ testPrimitives
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/6/2011 19:55'!
 sailingYear
 	^ 1492.
+! !
+
+!HandmadeTests methodsFor: 'tests' stamp: 'jto 5/6/2011 19:55'!
+testClassVars
+	self check: [Float infinity = 1.0e400];
+	     check: [(Float pi > 3.14159265) and: [Float pi < 3.14159266]];
+	     check: [Array empty size = 0];
+	     check: [(Character digitValue: 3) = $3].
 ! !
 
 !HandmadeTests methodsFor: 'support' stamp: 'jto 5/6/2011 19:55'!

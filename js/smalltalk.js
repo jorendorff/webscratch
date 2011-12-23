@@ -492,6 +492,68 @@ var console;
         return sysDict.at_put_(name, value);
     }
 
+    function initObjectGraph(objDescs, refs) {
+        var objs = [];
+        for (var i = 0; i < objDescs.length; i++) {
+            var desc = objDescs[i];
+            objs[i] = (desc === null ? nil : basicNew(desc[0]));
+        }
+
+        for (var i = 0; i < objDescs.length; i++) {
+            var desc = objDescs[i];
+            var obj = objs[i];
+            if (desc !== null) {
+                var keys = desc[0].__iv;
+                var values = desc[1];
+                for (var j = 0; j < keys.length; j++) {
+                    var v = values[j];
+                    if (typeof v === "number")
+                        v = objs[v];
+                    obj[keys[j]] = v;
+                }
+
+                if (desc.length > 2) {
+                    var vld = desc[2], arr;
+                    switch (obj.__class.__flags) {
+                    case 1:
+                    case 2:
+                        // Array data.
+                        for (var j = 0; j < vld.length; j++) {
+                            if (typeof vld[j] === "number")
+                                vld[j] = objs[vld[j]];
+                        }
+                        arr = vld;
+                        break;
+                    case 3:
+                        // Word data.
+                        arr = Uint32Array(vld.length / 8);
+                        break;
+                    case 4:
+                        // Byte data.
+                        arr = Uint8Array(vld.length / 2);
+                        break;
+                    default:
+                        debugger;
+                        assert(false);
+                    }
+                    obj.__array = arr;
+                }
+            }
+        }
+
+        for (var i = 0; i < refs.length; i++) {
+            var desc = refs[i];
+            var v = desc[2];
+            if (typeof v === "number")
+                v = objs[v];
+
+            if (desc[0] === "S")
+                setGlobal(Symbol(desc[1]), v);
+            else
+                desc[0]["_" + desc[1]] = v;
+        }
+    }
+
 
     // === ClassPool
 
@@ -919,7 +981,7 @@ var console;
             while (!toJSBoolean(this.value()))
                 body.value();
         }
-    }, {}, ['_nargs', '_startpc', '_home'], []);
+    }, {}, ['_nargs', '_startpc', '_home'], [], 1 /*variableSubclass*/);
     var Block_im = classes.BlockContext.__im;
     function Block(fn) {
         var obj = Object.create(Block_im);
@@ -1062,6 +1124,7 @@ var console;
         quit: quitPrimitive,
         init: init,
         getGlobal: getGlobal,
-        setGlobal: setGlobal
+        setGlobal: setGlobal,
+        initObjectGraph: initObjectGraph
     };
 })(this);

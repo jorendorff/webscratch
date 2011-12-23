@@ -10,9 +10,13 @@
 
     var dump = argv.length === 1 && argv[0] === "-d";
     try {
+        var objects_st = read("../../build/sources/ScratchSource1.4/objectdump.txt.utf8");
+        var objects_ast = smalltalk.parseMethodNoArgs(objects_st);
+
         var st = read("handmade-test.st");
         var ast = smalltalk.parseSqueakSource(st);
-        var js = smalltalk.translate(ast);
+
+        var js = smalltalk.translate(ast, objects_ast);
         if (dump)
             print(js);
         var initfn = eval(js);

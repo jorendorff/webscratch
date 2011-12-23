@@ -4,16 +4,19 @@
     "use strict";
 
     load('smalltalk.js');
+    load('BigInt.js');
     load('parse.js');
     load('compile.js');
 
-    if (argv.length != 1) {
-        print("usage: $JS main.js program.st");
+    if (argv.length != 2) {
+        print("usage: $JS main.js program.st heap.st");
         quit(1);
     }
 
     var st = read(argv[0]);
     var ast = smalltalk.parseSqueakSource(st);
-    var js = smalltalk.translate(ast);
+    var heap_st = read(argv[1]);
+    var heap_ast = smalltalk.parseMethodNoArgs(st);
+    var js = smalltalk.translate(ast, heap_st);
     print(js);
 })(arguments);
