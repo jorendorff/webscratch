@@ -3,6 +3,22 @@
 (function () {
     "use strict";
 
+    function smalltalk_eval(code) {
+        var ast = smalltalk.parseMethodNoArgs(code);
+
+        // After parsing the input, but before emitting code, hack the parse
+        // tree to make the method answer the value of the last expression.
+        var seq = ast.body.seq;
+        if (seq.length > 0) {
+            var last = seq[seq.length - 1];
+            if (last.type !== 'AnswerExpr')
+                seq[seq.length - 1] = {type: 'AnswerExpr', expr: last};
+        }
+
+        var fn = smalltalk.compileMethodLive(SmalltalkRuntime, ast);
+        return fn();
+    }
+
     function repl() {
         var buf = '', line;
         while ((line = readline("smalltalk> ")) !== null) {
@@ -10,21 +26,17 @@
                 buf += line + '\n';
                 continue;
             }
-            var ast = smalltalk.parseMethodNoArgs(buf);
-
-            // After parsing the input, make sure it answers something.
-            var seq = ast.body.seq;
-            if (seq.length > 0) {
-                var last = seq[seq.length - 1];
-                if (last.type !== 'AnswerExpr')
-                    seq[seq.length - 1] = {type: 'AnswerExpr', expr: last};
+            try {
+                // Clear buf before risking any exception, so that on error the
+                // user gets to start with a fresh buffer.
+                var code = buf;
+                buf = '';
+                var val = smalltalk_eval(code);
+                print(val.printString().__str);
+            } catch (exc) {
+                print("*** " + exc.name + ": " + exc.message);
             }
-
-            var fn = smalltalk.compileMethodLive(SmalltalkRuntime, ast);
-            var val = fn();
-            print(val.printString().__str);
             print();
-            buf = '';
         }
     }
 
@@ -35,17 +47,11 @@
         load("../compile.js");
         load("../deadcode.js");
 
-        var st = read("../../build/sources/ScratchSource1.4/ScratchSources.st.utf8");
-        var ast = smalltalk.parseSqueakSource(st);
-
-        var objects_st = read("../../build/sources/ScratchSource1.4/objectdump.txt.utf8");
-        var objects_ast = smalltalk.parseMethodNoArgs(objects_st);
-
-        var dead = smalltalk.deadMethods(ast);
-        var js = smalltalk.translate(ast, objects_ast);
-        console.log("compiled:  " + js.length + " bytes");
+        print("Loading...");
+        var js = read("../../build/ScratchSources.js");
         var initfn = eval(js);
         initfn(SmalltalkRuntime);
+        print("Ready.");
 
         repl();
     } catch (exc) {
