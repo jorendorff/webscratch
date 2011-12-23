@@ -16,7 +16,7 @@
     var st = read(argv[0]);
     var ast = smalltalk.parseSqueakSource(st);
     var heap_st = read(argv[1]);
-    var heap_ast = smalltalk.parseMethodNoArgs(st);
-    var js = smalltalk.translate(ast, heap_st);
+    var heap_ast = smalltalk.parseMethodNoArgs(heap_st);
+    var js = smalltalk.translate(ast, heap_ast);
     print(js);
 })(arguments);
