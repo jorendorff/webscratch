@@ -644,7 +644,7 @@ var smalltalk;
         function methodNoArgs() {
             var loc = locals();
             var body = withScope(loc, exprSeq, undefined);
-            return MethodDefinition(null, [], loc, body);
+            return MethodDefinition('', [], loc, body);
         }
 
         // SqueakSource ::= string ! SqueakSourceElement*

@@ -127,6 +127,47 @@
         return candidates;
     }
 
+    var subclassKindToFlags = {
+        "subclass": 0,
+        "variableSubclass": 1,
+        "weakSubclass": 2,
+        "variableWordSubclass": 3,
+        "variableByteSubclass": 4
+    };
+
+    function RuntimeClassInfo(runtime) {
+        this.runtime = runtime;
+    }
+    RuntimeClassInfo.prototype = {
+        hasClass: function hasClass(cls) {
+            return cls in this.runtime.classes;
+        },
+        getSuperclass: function getSuperclass(cls) {
+            return this.runtime.classes[cls].superclass()._name;
+        },
+        hasInstVar: function hasInstVar(cls, name) {
+            var c = this.runtime.classes[cls];
+            var sup = c.superclass();
+            for (var i = (sup === this.runtime.nil ? 0 : sup.__iv.length); i <  c.__iv.length; i++)
+                if (c.__iv[i] === name)
+                    return true;
+            return false;
+        },
+        hasClassVar: function hasClassVar(cls, name) {
+            return this.runtime.classes[cls].hasOwnProperty(name);
+        },
+        getAllInstVarNames: function getAllInstVarNames(cls) {
+            return [].concat(this.runtime.classes[cls].__iv);
+        },
+        getClassKind: function getClassKind(cls) {
+            var flags = this.runtime.classes[cls].__flags;
+            for (var kind in subclassKindToFlags)
+                if (subclassKindToFlags[kind] === flags)
+                    return kind;
+            throw new Error("Unknown class kind: " + cls);
+        }
+    };
+
     function StaticClassInfo(classes_ast) {
         this.classes_ast = classes_ast;
     }
@@ -188,14 +229,6 @@
         // Per-class state
         this.currentClass = null;
     }
-
-    var subclassKindToFlags = {
-        "subclass": 0,
-        "variableSubclass": 1,
-        "weakSubclass": 2,
-        "variableWordSubclass": 3,
-        "variableByteSubclass": 4
-    };
 
     Compilation.prototype = {
         addConstant: function addConstant(jsexpr) {
@@ -922,5 +955,20 @@
                 "});\n");
     }
 
+    function compileMethodLive(runtime, ast) {
+        var comp = new Compilation(new RuntimeClassInfo(runtime));
+        var code = comp.translateMethod("UndefinedObject", {method: ast}, true);
+        assert(/^'': function/.test(code));
+        var geval = eval;
+        var fn = geval("(function (__smalltalk) {\n" +
+                       "    var $B = __smalltalk.Block;\n" +
+                       (comp.constantDecls.length === 0 ? "" : "    var\n" + comp.constantDecls.join(",\n") + ";\n") +
+                       "    var $code = {" + code + "};\n" +
+                       "    return $code[''];\n" +
+                       "})");
+        return fn(runtime).bind(runtime.nil);
+    }
+
     smalltalk.translate = translate;
+    smalltalk.compileMethodLive = compileMethodLive;
 })();
