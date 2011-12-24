@@ -35,6 +35,17 @@ load("../parse.js");
             throw new Error("got: " + uneval(actual) + ", expected: " + uneval(expected) + " - " + msg);
     }
 
+    function assertThrows(fn, ctor) {
+        try {
+            fn();
+        } catch (exc) {
+            if (exc instanceof (ctor || Error))
+                return;
+            throw exc;
+        }
+        throw new Error("expected exception, no exception thrown");
+    }
+
     // Test tokenization.
     ["\0", "\t", "\n", "\r", "0", "'", "$", "\x7f", "\x80", "\xff"].forEach(function (ch) {
         assertEquals(smalltalk.parseExpr("$" + ch), {type: "Character", value: ch});
@@ -91,6 +102,11 @@ load("../parse.js");
 
     assertEquals(smalltalk.parseExpr("[:i|i]"), simpleBlock);
     assertEquals(smalltalk.parseExpr(" [ : i | i ] "), simpleBlock);
+
+    // Parser must reject extra tokens after an AnswerExpr.
+    assertThrows(function () { smalltalk.parseMethodNoArgs("^0. ^0."); });
+    assertThrows(function () { smalltalk.parseMethodNoArgs("^0. +"); });
+
     print("pass");
 })();
 

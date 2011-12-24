@@ -663,7 +663,10 @@ var smalltalk;
 
         var tokens = tokenize(s);
         var p = 0;
-        return selectedParser();
+        var ast = selectedParser();
+        if (p !== tokens.length)
+            throw new Error("Expected end of block, got `" + tokens.slice(p, p+20).join(" ") + "`");
+        return ast;
     }
 
 
