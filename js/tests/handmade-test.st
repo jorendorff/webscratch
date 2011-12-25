@@ -13776,8 +13776,10 @@ runTests
 	     testCompilerSelf;
 	     testIdentifiers;
 	     testIntegers;
+	     testStrings;
 	     testPrimitives;
-	     testClassVars.
+	     testClassVars;
+	     testIfError.
 ! !
 
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
@@ -13862,6 +13864,17 @@ testIntegers
 ! !
 
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
+testStrings
+	self check: [('abcde' byteAt: 1) = 97];
+	     check: [('abcde' basicAt: 1) = 97];
+	     check: ['' = ''];
+	     check: ['' ~= 'abc'];
+	     check: ['a' ~= 'z'];
+	     check: ['abcdef' ~= 'abcxyz'];
+	     check: [('abc', 'xyz') = 'abcxyz'].
+! !
+
+!HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
 testPrimitives
 	"17: SmallInteger#bitShift:"
 	self check: [(1 bitShift: 4) = 16];
@@ -13893,7 +13906,7 @@ testPrimitives
 	     check: [((ByteArray new: 5) at: 5) = 0].
 
 	"61: Object#at:put: / Object#basicAt:put:"
-	self check: [ :a |
+	self check: [ |a|
 		a _ {0 . 0}.
 		a at: 1 put: 3.
 		a basicAt: 2 put: 7.
@@ -13915,6 +13928,25 @@ testClassVars
 	     check: [(Float pi > 3.14159265) and: [Float pi < 3.14159266]];
 	     check: [Array empty size = 0];
 	     check: [(Character digitValue: 3) = $3].
+! !
+
+!HandmadeTests methodsFor: 'tests' stamp: 'jto 5/6/2011 19:55'!
+testIfError
+	self check: [self testIfError1 = 'huh?'];
+	     check: [([1 whatsUpDoc] ifError: ['huh']) = 'huh'].
+
+	"commented out because 1 / 0 does not throw an error yet
+	     check: [([1 / 0] ifError: [:err :rcvr |
+	                  'division by 0' = err
+				ifTrue: [^ Float infinity]
+				ifFalse: [self error: err]]) = Float infinity].
+	"
+! !
+
+!HandmadeTests methodsFor: 'tests' stamp: 'jto 5/6/2011 19:55'!
+testIfError1
+	[1 whatsUpDoc] ifError: [:err :rcvr | ^ 'huh?'].
+	^ 'fail'.
 ! !
 
 !HandmadeTests methodsFor: 'support' stamp: 'jto 5/6/2011 19:55'!

@@ -6,6 +6,7 @@
     load("../BigInt.js");
     load("../smalltalk.js");
     load("../parse.js");
+    load("../deadcode.js");
     load("../compile.js");
 
     var dump = argv.length === 1 && argv[0] === "-d";
@@ -15,6 +16,7 @@
 
         var st = read("handmade-test.st");
         var ast = smalltalk.parseSqueakSource(st);
+        smalltalk.deadMethods(ast);
 
         var js = smalltalk.translate(ast, objects_ast);
         if (dump)

@@ -13,7 +13,7 @@
 //
 // These .__im objects are not the classes themselves; that would be wrong,
 // because then all objects would inherit all the methods of classes, like
-// Class#name and so on. Rather, each class has an __im method that only
+// Class>>name and so on. Rather, each class has an __im object that only
 // contains instance methods (and the .__class property pointing back to its
 // class).
 //
@@ -182,6 +182,11 @@ var console;
     defineBasicMetaclass(UndefinedObject_class_im, classes.UndefinedObject);
 
     // === Primitives of the bootstrap classes
+
+    function isSmalltalkObject(val) {
+        return typeof val === "object" && val !== null &&
+               Object.prototype.isPrototypeOf.call(Object_im, val);
+    }
 
     function defMethods(im, methods) {
         var keys = Object.keys(methods);
@@ -475,7 +480,7 @@ var console;
     function init() {
         sysDict = classes.SystemDictionary.new();
 
-        // Before SystemDictionary#at:put: can be called, the global variable
+        // Before SystemDictionary>>at:put: can be called, the global variable
         // 'Undeclared' must already be accessible.
         classes.Dictionary.__im.at_put_.call(sysDict, Symbol("Undeclared"), classes.Dictionary.new());
 
@@ -526,11 +531,17 @@ var console;
                         break;
                     case 3:
                         // Word data.
-                        arr = Uint32Array(vld.length / 8);
+                        var alen = vld.length / 8;
+                        arr = Uint32Array(alen);
+                        for (var j = 0; j < alen; j++)
+                            arr[j] = parseInt(vld.substring(j << 3, (j << 3) + 8), 16);
                         break;
                     case 4:
                         // Byte data.
-                        arr = Uint8Array(vld.length / 2);
+                        var alen = vld.length / 2;
+                        arr = Uint8Array(alen);
+                        for (var j = 0; j < alen; j++)
+                            arr[j] = parseInt(vld.substring(j << 1, (j << 1) + 2), 16);
                         break;
                     default:
                         debugger;
@@ -967,6 +978,9 @@ var console;
     defClass("ContextPart", classes.InstructionStream, {}, {},
              ['_stackp'], ['_PrimitiveFailToken']);
     defClass("BlockContext", classes.ContextPart, {
+        numArgs: function Block$numArgs() {
+            return this.__fn.length;
+        },
         value: function Block$value() {
             return this.__fn.call(null);
         },
@@ -980,6 +994,29 @@ var console;
         whileFalse_: function Block$whileFalse_(body) {
             while (!toJSBoolean(this.value()))
                 body.value();
+        },
+        ifError_: function Block$ifError_(handler) {
+            try {
+                debugger;
+                return this.__fn.call(null);
+            } catch (exc) {
+                // JS exceptions are used for Smalltalk AnswerExprs. In that
+                // case exc will be an Array; in any case the receiver of
+                // ifError: should not contain an explicit return.
+                if (!(exc instanceof Error))
+                    throw exc;
+                if (handler.__fn.length === 0) {
+                    return handler.__fn.call(null);
+                } else {
+                    var message = exc.message;
+                    if (typeof message !== "string")
+                        message = '';
+                    var receiver = exc.receiver;
+                    if (!isSmalltalkObject(receiver))
+                        receiver = nil;
+                    return handler.__fn.call(null, getString(message), receiver);
+                }
+            }
         }
     }, {}, ['_nargs', '_startpc', '_home'], [], 1 /*variableSubclass*/);
     var Block_im = classes.BlockContext.__im;
@@ -994,10 +1031,21 @@ var console;
     }
 
     // --- Strings
+    // In Squeak, there is no special String>>basicAt: method.  Because of the
+    // special representation of Strings in webscratch, we provide one.
+    //
+    // Squeak also uses the same primitives (60 and 61) for both
+    // Object>>basicAt:/basicAt:put: and String>>byteAt:/byteAt:put:. Again,
+    // because we have two different storage strategies for Objects and
+    // Strings, we completely replace String>>byteAt: and byteAtPut:.
+    //
+    function String$basicAt_(i) {
+        return getSmallInteger(this.__str.charCodeAt(toJSIndex(i)));
+    }
     defClass("String", classes.ArrayedCollection, {
-        byteAt_: function String$byteAt_(i) {
-            return getSmallInteger(this.__str.charCodeAt(i.__value - i));
-        },
+        basicAt_: String$basicAt_,
+        basicAt_put_: bust,
+        byteAt_: String$basicAt_,
         byteAt_put_: bust
     }, {}, [], [], 4);
     var String_im = classes.String.__im;

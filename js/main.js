@@ -6,8 +6,8 @@
     load('smalltalk.js');
     load('BigInt.js');
     load('parse.js');
-    load('compile.js');
     load('deadcode.js');
+    load('compile.js');
 
     if (argv.length != 2) {
         print("usage: $JS main.js program.st heap.st");

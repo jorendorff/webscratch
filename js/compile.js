@@ -441,7 +441,7 @@
                         var octet = function (n) {
                             assertEq(n.type, "Integer");
                             assert(n.value >= 0 && n.value < 256);
-                            return '??';
+                            return (256 + n.value).toString(16).substring(1);
                         };
                         s += ", '" + vld.elements.map(octet).join("") + "'";
                     } else if (cls != null && comp.classInfo.getClassKind(cls) === "variableWordSubclass") {
@@ -455,7 +455,7 @@
                                 v = parseInt(n.value, 16);
                             }
                             assert(v >= 0 && v <= 0xffffffff);
-                            return '????????';
+                            return (0x100000000 + v).toString(16).substring(1);
                         };
                         s += ", '" + vld.elements.map(word).join("") + "'";
                     } else {
