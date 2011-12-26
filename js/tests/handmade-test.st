@@ -1462,6 +1462,67 @@ new: sizeRequested
 
 
 
+Behavior subclass: #ClassDescription
+	instanceVariableNames: 'instanceVariables organization '
+	classVariableNames: ''
+	poolDictionaries: ''
+	category: 'Kernel-Classes'!
+!ClassDescription commentStamp: '<historical>' prior: 0!
+I add a number of facilities to basic Behaviors:
+	Named instance variables
+	Category organization for methods
+	The notion of a name of this class (implemented as subclass responsibility)
+	The maintenance of a ChangeSet, and logging changes on a file
+	Most of the mechanism for fileOut.
+	
+I am an abstract class, in particular, my facilities are intended for inheritance by two subclasses, Class and Metaclass.
+
+The slots 'organization' and 'methodDict' should ONLY be accessed by message in order for things to work during ImageSegment>>discoverActiveClasses (q.v.).!
+
+
+!ClassDescription methodsFor: 'printing'!
+printOn: aStream 
+
+	aStream nextPutAll: self name! !
+
+!ClassDescription methodsFor: 'accessing class hierarchy' stamp: 'di 7/21/1999 11:05'!
+subclasses
+	^ Array new! !
+
+!ClassDescription methodsFor: 'accessing class hierarchy' stamp: 'ar 7/10/1999 08:22'!
+subclassesDo: aBlock
+	"Evaluate the argument, aBlock, for each of the receiver's immediate subclasses."
+	^self subclasses do: aBlock! !
+
+
+
+ClassDescription subclass: #Class
+	instanceVariableNames: 'subclasses name classPool sharedPools environment '
+	classVariableNames: ''
+	poolDictionaries: ''
+	category: 'Kernel-Classes'!
+!Class commentStamp: '<historical>' prior: 0!
+I add a number of facilities to those in ClassDescription:
+	A set of all my subclasses (defined in ClassDescription, but only used here and below)
+	A name by which I can be found in a SystemDictionary
+	A classPool for class variables shared between this class and its metaclass
+	A list of sharedPools which probably should be supplanted by some better mechanism.
+
+My instances describe the representation and behavior of objects. I add more comprehensive programming support facilities to the basic attributes of Behavior and the descriptive facilities of ClassDescription.
+
+The slot 'subclasses' is a redundant structure.  It is never used during execution, but is used by the development system to simplify or speed certain operations.  !
+
+
+!Class methodsFor: 'accessing'!
+name
+	"Answer the name of the receiver."
+
+	name == nil
+		ifTrue: [^super name]
+		ifFalse: [^name]! !
+
+
+
 Object subclass: #Boolean
 	instanceVariableNames: ''
 	classVariableNames: ''
@@ -13778,7 +13839,7 @@ runTests
 	     testIntegers;
 	     testStrings;
 	     testPrimitives;
-	     testClassVars;
+	     testClasses;
 	     testIfError.
 ! !
 
@@ -13923,7 +13984,13 @@ sailingYear
 ! !
 
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/6/2011 19:55'!
-testClassVars
+testClasses
+        "class name bootstrapping"
+	self check: [Object name == #Object];
+	     check: [Symbol name == #Symbol];
+	     check: [Interval name == #Interval].
+
+	"class variables"
 	self check: [Float infinity = 1.0e400];
 	     check: [(Float pi > 3.14159265) and: [Float pi < 3.14159266]];
 	     check: [Array empty size = 0];

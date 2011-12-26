@@ -144,15 +144,26 @@ var console;
         cls.__iv = supercls ? supercls.__iv.concat(iv) : iv;
         cls._superclass = supercls || nil;
         cls.__flags = 0;
-        cls._methodDict = cls._format = cls._instanceVariables =
-            cls._organization = nil;
+        cls._methodDict = nil;
+        cls._format = nil;
+        cls._instanceVariables = nil;
+        cls._organization = nil;
         return cls;
     }
 
     function defineBasicClass(name, metaclass_im, im, iv, flags) {
         var cls = defineBasicClassDescription(metaclass_im, im, iv, flags);
-        cls._name = name; // should create a Symbol, probably
-        cls._subclasses = cls._classPool = cls._sharedPools = cls._environment = nil;
+        if (classes.Symbol) {
+            cls._name = Symbol(name);
+        } else {
+            // The Symbol class has not been bootstrapped yet.
+            // Store nil from now and we will fix it when Symbol bootstraps.
+            cls._name = nil;
+        }
+        cls._subclasses = nil;
+        cls._classPool = nil;
+        cls._sharedPools = nil;
+        cls._environment = nil;
         classes[name] = cls;
         return cls;
     }
@@ -226,13 +237,13 @@ var console;
             return i.__value;
         }
         assert(i.isKindOf(classes.Integer), "Integer required");
-        throw new Error("not supported yet: converting " + i.__class._name +
+        throw new Error("not supported yet: converting " + i.__class._name.__str +
                         " object to JS number");
     }
 
     function basicNew_(cls, size) {
         assert(cls.__flags != 0,
-               cls._name + " cannot have variable sized instances");
+               cls._name.__str + " cannot have variable sized instances");
         var obj = Object.create(cls.__im);
         var iv = cls.__iv;
         for (var i = 0, n = iv.length; i < n; i++)
@@ -471,98 +482,6 @@ var console;
     function hasClassMethod(className, methodName) {
         var cls = classes[className];
         return cls !== undefined && has(cls.__class, methodName);
-    }
-
-
-    // === Global variables
-
-    var sysDict;
-    function init() {
-        sysDict = classes.SystemDictionary.new();
-
-        // Before SystemDictionary>>at:put: can be called, the global variable
-        // 'Undeclared' must already be accessible.
-        classes.Dictionary.__im.at_put_.call(sysDict, Symbol("Undeclared"), classes.Dictionary.new());
-
-        sysDict.at_put_(Symbol("Smalltalk"), sysDict);
-
-        //sysDict.newChanges_(classes.ChangeSet.new());
-    }
-
-    function getGlobal(name) {
-        return sysDict.at_(name);
-    }
-
-    function setGlobal(name, value) {
-        return sysDict.at_put_(name, value);
-    }
-
-    function initObjectGraph(objDescs, refs) {
-        var objs = [];
-        for (var i = 0; i < objDescs.length; i++) {
-            var desc = objDescs[i];
-            objs[i] = (desc === null ? nil : basicNew(desc[0]));
-        }
-
-        for (var i = 0; i < objDescs.length; i++) {
-            var desc = objDescs[i];
-            var obj = objs[i];
-            if (desc !== null) {
-                var keys = desc[0].__iv;
-                var values = desc[1];
-                for (var j = 0; j < keys.length; j++) {
-                    var v = values[j];
-                    if (typeof v === "number")
-                        v = objs[v];
-                    obj[keys[j]] = v;
-                }
-
-                if (desc.length > 2) {
-                    var vld = desc[2], arr;
-                    switch (obj.__class.__flags) {
-                    case 1:
-                    case 2:
-                        // Array data.
-                        for (var j = 0; j < vld.length; j++) {
-                            if (typeof vld[j] === "number")
-                                vld[j] = objs[vld[j]];
-                        }
-                        arr = vld;
-                        break;
-                    case 3:
-                        // Word data.
-                        var alen = vld.length / 8;
-                        arr = Uint32Array(alen);
-                        for (var j = 0; j < alen; j++)
-                            arr[j] = parseInt(vld.substring(j << 3, (j << 3) + 8), 16);
-                        break;
-                    case 4:
-                        // Byte data.
-                        var alen = vld.length / 2;
-                        arr = Uint8Array(alen);
-                        for (var j = 0; j < alen; j++)
-                            arr[j] = parseInt(vld.substring(j << 1, (j << 1) + 2), 16);
-                        break;
-                    default:
-                        debugger;
-                        assert(false);
-                    }
-                    obj.__array = arr;
-                }
-            }
-        }
-
-        for (var i = 0; i < refs.length; i++) {
-            var desc = refs[i];
-            var v = desc[2];
-            if (typeof v === "number")
-                v = objs[v];
-
-            if (desc[0] === "S")
-                setGlobal(Symbol(desc[1]), v);
-            else
-                desc[0]["_" + desc[1]] = v;
-        }
     }
 
 
@@ -1121,16 +1040,104 @@ var console;
         return obj;
     }
 
-    // A circular dependency between String#intern and Symbol#initialize makes
-    // it impossible to start without pre-populating Symbol#SingleCharSymbols.
-    var scsymbols = [], sym_im = classes.Symbol.__im;
-    for (var i = 0; i < 128; i++) {
-        var s = Object.create(sym_im);
-        s.__str = String.fromCharCode(i);
-        symbols[s.__str] = s;
-        scsymbols[i] = s;
+    // Now that we can make symbols, fix up the _name field of the classes
+    // already defined.
+    for (var name in classes) {
+        assertEq(classes[name]._name, nil);
+        classes[name]._name = Symbol(name);
     }
-    classes.Symbol._SingleCharSymbols = Array_(scsymbols);
+
+
+    // === Runtime initialization
+
+    var sysDict;
+    function init() {
+        sysDict = classes.SystemDictionary.new();
+
+        // Before SystemDictionary>>at:put: can be called, the global variable
+        // 'Undeclared' must already be accessible.
+        classes.Dictionary.__im.at_put_.call(sysDict, Symbol("Undeclared"), classes.Dictionary.new());
+
+        sysDict.at_put_(Symbol("Smalltalk"), sysDict);
+
+        //sysDict.newChanges_(classes.ChangeSet.new());
+    }
+
+    function getGlobal(name) {
+        return sysDict.at_(name);
+    }
+
+    function setGlobal(name, value) {
+        return sysDict.at_put_(name, value);
+    }
+
+    function initObjectGraph(objDescs, refs) {
+        var objs = [];
+        for (var i = 0; i < objDescs.length; i++) {
+            var desc = objDescs[i];
+            objs[i] = (desc === null ? nil : basicNew(desc[0]));
+        }
+
+        for (var i = 0; i < objDescs.length; i++) {
+            var desc = objDescs[i];
+            var obj = objs[i];
+            if (desc !== null) {
+                var keys = desc[0].__iv;
+                var values = desc[1];
+                for (var j = 0; j < keys.length; j++) {
+                    var v = values[j];
+                    if (typeof v === "number")
+                        v = objs[v];
+                    obj[keys[j]] = v;
+                }
+
+                if (desc.length > 2) {
+                    var vld = desc[2], arr;
+                    switch (obj.__class.__flags) {
+                    case 1:
+                    case 2:
+                        // Array data.
+                        for (var j = 0; j < vld.length; j++) {
+                            if (typeof vld[j] === "number")
+                                vld[j] = objs[vld[j]];
+                        }
+                        arr = vld;
+                        break;
+                    case 3:
+                        // Word data.
+                        var alen = vld.length / 8;
+                        arr = Uint32Array(alen);
+                        for (var j = 0; j < alen; j++)
+                            arr[j] = parseInt(vld.substring(j << 3, (j << 3) + 8), 16);
+                        break;
+                    case 4:
+                        // Byte data.
+                        var alen = vld.length / 2;
+                        arr = Uint8Array(alen);
+                        for (var j = 0; j < alen; j++)
+                            arr[j] = parseInt(vld.substring(j << 1, (j << 1) + 2), 16);
+                        break;
+                    default:
+                        debugger;
+                        assert(false);
+                    }
+                    obj.__array = arr;
+                }
+            }
+        }
+
+        for (var i = 0; i < refs.length; i++) {
+            var desc = refs[i];
+            var v = desc[2];
+            if (typeof v === "number")
+                v = objs[v];
+
+            if (desc[0] === "S")
+                setGlobal(Symbol(desc[1]), v);
+            else
+                desc[0]["_" + desc[1]] = v;
+        }
+    }
 
     // --- Other system functions
     function quitPrimitive() {

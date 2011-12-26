@@ -143,7 +143,7 @@
             return cls in this.runtime.classes;
         },
         getSuperclass: function getSuperclass(cls) {
-            return this.runtime.classes[cls].superclass()._name;
+            return this.runtime.classes[cls].superclass()._name.__str;
         },
         hasInstVar: function hasInstVar(cls, name) {
             var c = this.runtime.classes[cls];
