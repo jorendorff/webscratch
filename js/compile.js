@@ -224,6 +224,7 @@
         this.constantCache = Object.create(null);
 
         this._nextsym = 1;
+        this.requiresGlobal = false;
         this.unknownNames = [];
 
         // Per-class state
@@ -679,13 +680,14 @@
                         else if (comp.classInfo.hasClassVar(cls, n.id))
                             return "_" + cls + "._" + n.id;
                     }
-                    if (comp.classInfo.hasClass(n.id))
-                        return "_" + n.id;
-                    if (comp.unknownNames.indexOf(n.id) === -1) {
-                        comp.unknownNames.push(n.id);
-                        console.warn("unknown name: " + n.id);
+                    if (!comp.classInfo.hasClass(n.id)) {
+                        if (comp.unknownNames.indexOf(n.id) === -1) {
+                            comp.unknownNames.push(n.id);
+                            console.warn("unknown name: " + n.id);
+                        }
                     }
-                    return "__smalltalk.getGlobal(" + comp.getSymbol(n.id) + ")";
+                    comp.requiresGlobal = true;
+                    return "$G." + n.id;
 
                 case "Primitive":
                     throw new Error("Unexpected <primitive:> in expression");
@@ -826,9 +828,7 @@
                     {
                         var lhs = translateExpr(n.left, POSTFIX_PREC, "");
                         var rhs = translateExpr(n.right, ASSIGN_PREC, indent + "    ");
-                        if (/^__smalltalk.getGlobal/.test(lhs))
-                            return "__smalltalk.setGlobal(" + comp.getSymbol(n.left.id) + ", " + rhs + ")";
-                        else if (prec <= ASSIGN_PREC)
+                        if (prec <= ASSIGN_PREC)
                             return lhs + " = " + rhs;
                         else
                             return "(" + lhs + " = " + rhs + ")";
@@ -911,8 +911,16 @@
                 this.currentClass = null;
             }
             return s;
-        }
+        },
 
+        wrapOutput: function wrapOutput(code) {
+            return ("(function (__smalltalk) {\n" +
+                    "    var $B = __smalltalk.Block;\n" +
+                    (this.requiresGlobal ? "    var $G = __smalltalk.globals;\n" : "") +
+                    (this.constantDecls.length === 0 ? "" : "    var\n" + this.constantDecls.join(",\n") + ";\n") +
+                    code +
+                    "});\n");
+        }
     };
 
     function translate(classes_ast, objects_ast) {
@@ -946,26 +954,19 @@
         // Compile the object graph.
         var classinit_code = c.translateObjectGraph(objects_ast);
 
-        return ("(function (__smalltalk) {\n" +
-                "    var $B = __smalltalk.Block;\n" +
-                (c.constantDecls.length === 0 ? "" : "    var\n" + c.constantDecls.join(",\n") + ";\n") +
-                classdef_code.join("") +
-                "\n    __smalltalk.init();\n\n" +
-                classinit_code +
-                "});\n");
+        return c.wrapOutput(classdef_code.join("") +
+                            "\n" +
+                            classinit_code);
     }
 
     function compileMethodLive(runtime, ast) {
         var comp = new Compilation(new RuntimeClassInfo(runtime));
         var code = comp.translateMethod("UndefinedObject", {method: ast}, true);
         assert(/^'': function/.test(code));
+        code = comp.wrapOutput("    var $code = {" + code + "};\n" +
+                               "    return $code[''];\n");
         var geval = eval;
-        var fn = geval("(function (__smalltalk) {\n" +
-                       "    var $B = __smalltalk.Block;\n" +
-                       (comp.constantDecls.length === 0 ? "" : "    var\n" + comp.constantDecls.join(",\n") + ";\n") +
-                       "    var $code = {" + code + "};\n" +
-                       "    return $code[''];\n" +
-                       "})");
+        var fn = geval(code);
         return fn(runtime).bind(runtime.nil);
     }
 

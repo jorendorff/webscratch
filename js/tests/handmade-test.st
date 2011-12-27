@@ -13835,6 +13835,7 @@ runTests
 	self testBasics;
 	     testCompilerBlocks;
 	     testCompilerSelf;
+	     testCompilerGlobals;
 	     testIdentifiers;
 	     testIntegers;
 	     testStrings;
@@ -13867,6 +13868,11 @@ testBasics
 	self check: [self sailingYear = 1492].
 ! !
 
+!HandmadeTests methodsFor: 'tests' stamp: 'jto 5/6/2011 19:55'!
+sailingYear
+	^ 1492.
+! !
+
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
 testCompilerSelf
 	"test compiler support for the 'self' keyword"
@@ -13874,6 +13880,15 @@ testCompilerSelf
  
 	x _ ({1} at: 1 put: self; at: 1).
 	self check: [x == self].
+! !
+
+!HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
+testCompilerGlobals
+	"test compiler support for global variables"
+	self check: [Object name == #Object];
+	     check: [Symbol name == #Symbol];
+	     check: [Interval name == #Interval];
+	     check: [Undeclared class == Dictionary].
 ! !
 
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
@@ -13979,17 +13994,7 @@ testPrimitives
 ! !
 
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/6/2011 19:55'!
-sailingYear
-	^ 1492.
-! !
-
-!HandmadeTests methodsFor: 'tests' stamp: 'jto 5/6/2011 19:55'!
 testClasses
-        "class name bootstrapping"
-	self check: [Object name == #Object];
-	     check: [Symbol name == #Symbol];
-	     check: [Interval name == #Interval].
-
 	"class variables"
 	self check: [Float infinity = 1.0e400];
 	     check: [(Float pi > 3.14159265) and: [Float pi < 3.14159266]];

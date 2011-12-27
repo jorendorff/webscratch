@@ -71,8 +71,9 @@
 //     uppercase letter. The 'name' instance variable of a class is cls._name;
 //     if a class has a class variable named 'Name', that's cls._Name.
 //
-// Global variables: Just as in Squeak, these are entries of the
-//     SystemDictionary.
+// Global variables: These are stored in a JS object, SmalltalkRuntime.globals.
+//     The SystemDictionary object does not yet correctly reflect the real
+//     globals, but direct accesses to globals work.
 //
 // Primitives: As in Squeak, nil, true, and false are singleton objects and
 //     contain no data; they are distinguished by identity and the fact that
@@ -1050,27 +1051,6 @@ var console;
 
     // === Runtime initialization
 
-    var sysDict;
-    function init() {
-        sysDict = globals.SystemDictionary.new();
-
-        // Before SystemDictionary>>at:put: can be called, the global variable
-        // 'Undeclared' must already be accessible.
-        globals.Dictionary.__im.at_put_.call(sysDict, Symbol("Undeclared"), globals.Dictionary.new());
-
-        sysDict.at_put_(Symbol("Smalltalk"), sysDict);
-
-        //sysDict.newChanges_(globals.ChangeSet.new());
-    }
-
-    function getGlobal(name) {
-        return sysDict.at_(name);
-    }
-
-    function setGlobal(name, value) {
-        return sysDict.at_put_(name, value);
-    }
-
     function initObjectGraph(objDescs, refs) {
         var objs = [];
         for (var i = 0; i < objDescs.length; i++) {
@@ -1133,7 +1113,7 @@ var console;
                 v = objs[v];
 
             if (desc[0] === "S")
-                setGlobal(Symbol(desc[1]), v);
+                globals[desc[1]] = v;
             else
                 desc[0]["_" + desc[1]] = v;
         }
@@ -1177,9 +1157,6 @@ var console;
         toJSArrayReadOnly: toJSArrayReadOnly,
         toJSIndex: toJSIndex,
         quit: quitPrimitive,
-        init: init,
-        getGlobal: getGlobal,
-        setGlobal: setGlobal,
         initObjectGraph: initObjectGraph
     };
 })(this);
