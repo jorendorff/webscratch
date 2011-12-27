@@ -25,13 +25,13 @@
 // Metaclasses work exactly the same as in any Smalltalk.
 //
 //                                                                                       +----------------+
-//                                                                                       +   Metaclass    +---> to Class.__im, etc.
+//                                                                                       +   Metaclass    +---> to ClassDescription.__im, etc.
 //                                                                                       +----------------+
 //                                                                                            ^   |     
 //                                                                                     __class|   |__im 
 //                                                                                            |   v     
 //                                                   +----------------------+ __proto__  +----------------+
-//                                                   |    Array class       |----------->| Metaclass.__im |---> to Class.__im, etc.
+//                                                   |    Array class       |----------->| Metaclass.__im |---> to ClassDescription.__im, etc.
 //                                                   +----------------------+            +----------------+
 //                                                           ^   |     
 //                                                    __class|   |__im 
@@ -109,7 +109,7 @@ var console;
         assert(actual === expected, msg);
     }
 
-    var classes = Object.create(null);
+    var globals = Object.create(null);
 
     // === Bootstrapping
 
@@ -153,7 +153,7 @@ var console;
 
     function defineBasicClass(name, metaclass_im, im, iv, flags) {
         var cls = defineBasicClassDescription(metaclass_im, im, iv, flags);
-        if (classes.Symbol) {
+        if (globals.Symbol) {
             cls._name = Symbol(name);
         } else {
             // The Symbol class has not been bootstrapped yet.
@@ -164,7 +164,7 @@ var console;
         cls._classPool = nil;
         cls._sharedPools = nil;
         cls._environment = nil;
-        classes[name] = cls;
+        globals[name] = cls;
         return cls;
     }
 
@@ -185,12 +185,12 @@ var console;
                       '_environment']);
     defineBasicClass("UndefinedObject", UndefinedObject_class_im, UndefinedObject_im, []);
 
-    defineBasicMetaclass(Object_class_im, classes.Object);
-    defineBasicMetaclass(Behavior_class_im, classes.Behavior);
-    defineBasicMetaclass(ClassDescription_class_im, classes.ClassDescription);
-    defineBasicMetaclass(Metaclass_class_im, classes.Metaclass);
-    defineBasicMetaclass(Class_class_im, classes.Class);
-    defineBasicMetaclass(UndefinedObject_class_im, classes.UndefinedObject);
+    defineBasicMetaclass(Object_class_im, globals.Object);
+    defineBasicMetaclass(Behavior_class_im, globals.Behavior);
+    defineBasicMetaclass(ClassDescription_class_im, globals.ClassDescription);
+    defineBasicMetaclass(Metaclass_class_im, globals.Metaclass);
+    defineBasicMetaclass(Class_class_im, globals.Class);
+    defineBasicMetaclass(UndefinedObject_class_im, globals.UndefinedObject);
 
     // === Primitives of the bootstrap classes
 
@@ -222,7 +222,7 @@ var console;
         case 4: case 6:
             // ByteArrays and LargeIntegers get a byte array.
             // Strings and Symbols get a string.
-            if (cls === classes.String || Object.prototype.isPrototypeOf(classes.String.__im, cls.__im))
+            if (cls === globals.String || Object.prototype.isPrototypeOf(globals.String.__im, cls.__im))
                 obj.__str = "";
             else
                 obj.__array = new Uint8Array();
@@ -236,7 +236,7 @@ var console;
             assert(i.__value >= 0, "non-negative integer required");
             return i.__value;
         }
-        assert(i.isKindOf(classes.Integer), "Integer required");
+        assert(i.isKindOf(globals.Integer), "Integer required");
         throw new Error("not supported yet: converting " + i.__class._name.__str +
                         " object to JS number");
     }
@@ -259,7 +259,7 @@ var console;
             obj.__array = arr;
             break;
         case 4: case 6:
-            if (cls === classes.String || Object.prototype.isPrototypeOf(classes.String.__im, cls.__im))
+            if (cls === globals.String || Object.prototype.isPrototypeOf(globals.String.__im, cls.__im))
                 obj.__str = Array(toJSNaturalNumber(size) + 1).join("\0");
             else
                 obj.__array = new Uint8Array(toJSNaturalNumber(size));
@@ -348,7 +348,7 @@ var console;
             return nil;
         },
         classPool: function Class$classPool() {
-            return this._classPool === nil ? classes.ClassPool.for_(this) : this._classPool;
+            return this._classPool === nil ? globals.ClassPool.for_(this) : this._classPool;
         }
     });
 
@@ -425,9 +425,9 @@ var console;
 
     function defClass(name, superclass, im, cm, iv, cv, flags) {
         var cls, cls_im, mcls, mcls_im;
-        if (Object.prototype.hasOwnProperty.call(classes, name)) {
+        if (Object.prototype.hasOwnProperty.call(globals, name)) {
             // Class and metaclass already exist.
-            cls = classes[name];
+            cls = globals[name];
             cls_im = cls.__im;
             mcls = cls.__class;
             mcls_im = mcls.__im;
@@ -466,7 +466,7 @@ var console;
             cls_im[x] = im[x];
         }
 
-        assertEq(classes[name], cls);
+        assertEq(globals[name], cls);
         return cls;
     }
 
@@ -476,18 +476,18 @@ var console;
     }
 
     function hasMethod(className, methodName) {
-        return has(classes[className], methodName);
+        return has(globals[className], methodName);
     }
 
     function hasClassMethod(className, methodName) {
-        var cls = classes[className];
+        var cls = globals[className];
         return cls !== undefined && has(cls.__class, methodName);
     }
 
 
     // === ClassPool
 
-    defClass("ClassPool", classes.Object, {
+    defClass("ClassPool", globals.Object, {
         includesKey_: function ClassPool$includesKey_(key) {
             return Object.prototype.hasOwnProperty.call(this._cls, toJSVarName(key)) ? true_ : false_;
         },
@@ -512,9 +512,9 @@ var console;
 
 
     // --- Numbers
-    defClass("Magnitude", classes.Object, {}, {}, [], []);
-    defClass("Number", classes.Magnitude, {}, {}, [], []);
-    defClass("Integer", classes.Number, {}, {}, [], []);
+    defClass("Magnitude", globals.Object, {}, {}, [], []);
+    defClass("Number", globals.Magnitude, {}, {}, [], []);
+    defClass("Integer", globals.Number, {}, {}, [], []);
 
     function getInteger(n) {
         if (n < (0xc0000000|0) || 0x3fffffff < n)
@@ -526,9 +526,9 @@ var console;
         var cls;
         if (s.charAt(0) === '-') {
             s = s.substring(1);
-            cls = classes.LargeNegativeInteger;
+            cls = globals.LargeNegativeInteger;
         } else {
-            cls = classes.LargePositiveInteger;
+            cls = globals.LargePositiveInteger;
         }
 
         if (s.length & 1)
@@ -549,28 +549,28 @@ var console;
 
     function isSmall(v) {
         var cls = v.__class;
-        if (cls === classes.SmallInteger)
+        if (cls === globals.SmallInteger)
             return true;
 
         // Large integers with a value that would fit into an int32 also count as small.
-        if (cls !== classes.LargePositiveInteger && cls !== classes.LargeNegativeInteger)
+        if (cls !== globals.LargePositiveInteger && cls !== globals.LargeNegativeInteger)
             return false;
         var a = v.__array;
         if (a.length !== 4)
             return false;
         if ((a[3] & 0x80) === 0)
             return true;
-        return (cls === classes.LargeNegativeInteger &&
+        return (cls === globals.LargeNegativeInteger &&
                 a[3] === 0x80 && a[2] === 0 && a[1] === 0 && a[0] === 0);
     }
 
     function smallValue(v) {
         var cls = v.__class;
-        if (cls === classes.SmallInteger)
+        if (cls === globals.SmallInteger)
             return v.__value;
         var a = v.__array;
         var b = a[0] | (a[1] << 8) | (a[2] << 16) | (a[3] << 24);
-        return cls === classes.LargePositiveInteger ? b : -b;
+        return cls === globals.LargePositiveInteger ? b : -b;
     }
 
     function bitOp(op) {
@@ -788,24 +788,24 @@ var console;
     primitives[138] = "throw new Error('Object#someObject');\n";
     primitives[139] = "throw new Error('Object#nextObject');\n";
 
-    defClass("SmallInteger", classes.Integer, {
+    defClass("SmallInteger", globals.Integer, {
         "*": function (that) {
             return that.__class === SmallInteger_class
                    ? getInteger(this.__value * that.__value) // XXX BUG probably imprecise
-                   : classes.Integer.__im["*"].call(this, that);
+                   : globals.Integer.__im["*"].call(this, that);
         },
         "/": function (that) {
             return that.__class === SmallInteger_class
                    ? getInteger(this.__value / that.__value)
-                   : classes.Integer.__im["/"].call(this, that);
+                   : globals.Integer.__im["/"].call(this, that);
         },
         "//": function (that) {
             return that.__class === SmallInteger_class
                    ? getInteger(Math.floor(this.__value / that.__value))
-                   : classes.Integer.__im["//"].call(this, that);
+                   : globals.Integer.__im["//"].call(this, that);
         }
     }, {}, [], []);
-    var SmallInteger_class = classes.SmallInteger;
+    var SmallInteger_class = globals.SmallInteger;
     var SmallInteger_im = SmallInteger_class.__im;
     function getSmallInteger(n) {
         var obj = Object.create(SmallInteger_im);
@@ -813,17 +813,17 @@ var console;
         return obj;
     }
 
-    defClass("LargePositiveInteger", classes.Integer, {}, {}, [], [], 4);
-    defClass("LargeNegativeInteger", classes.LargePositiveInteger, {}, {}, [], [], 4);
+    defClass("LargePositiveInteger", globals.Integer, {}, {}, [], [], 4);
+    defClass("LargeNegativeInteger", globals.LargePositiveInteger, {}, {}, [], [], 4);
 
-    defClass("Float", classes.Number, {
+    defClass("Float", globals.Number, {
         arcTan: function () { return getFloat(Math.atan(this.__value)); },
         exp:    function () { return getFloat(Math.exp(this.__value)); },
         ln:     function () { return getFloat(Math.log(this.__value)); },
         sin:    function () { return getFloat(Math.sin(this.__value)); },
         sqrt:   function () { return getFloat(Math.sqrt(this.__value)); }
     }, {}, [], []);
-    var Float_class = classes.Float;
+    var Float_class = globals.Float;
     var Float_im = Float_class.__im;
     function getFloat(n) {
         var obj = Object.create(Float_im);
@@ -832,17 +832,17 @@ var console;
     }
 
     // --- Arrays
-    defClass("Collection", classes.Object, {}, {}, [], ['_RandomForPicking']);
-    defClass("SequenceableCollection", classes.Collection, {}, {}, [], []);
-    defClass("ArrayedCollection", classes.SequenceableCollection, {
+    defClass("Collection", globals.Object, {}, {}, [], ['_RandomForPicking']);
+    defClass("SequenceableCollection", globals.Collection, {}, {}, [], []);
+    defClass("ArrayedCollection", globals.SequenceableCollection, {
         size: function () {
             // Strings have .__str; everything else has .__array.
             var arr = this.__array || this.__str;
             return getSmallInteger(arr.length);
         }
     }, {}, [], []);
-    defClass("Array", classes.ArrayedCollection, {}, {}, [], ['_EmptyArray'], 1);
-    var Array_im = classes.Array.__im;
+    defClass("Array", globals.ArrayedCollection, {}, {}, [], ['_EmptyArray'], 1);
+    var Array_im = globals.Array.__im;
     function Array_(arr) {
         var obj = Object.create(Array_im);
         obj.__array = arr;
@@ -866,11 +866,11 @@ var console;
     // any primitive methods. However we want the values 'true' and
     // 'false' to exist by the time we start executing compiled code,
     // so we have to do at least a little bit of magic here.
-    defClass("Boolean", classes.Object, {}, {}, [], []);
-    defClass("False", classes.Boolean, {}, {}, [], []);
-    defClass("True", classes.Boolean, {}, {}, [], []);
-    var false_ = Object.create(classes.False.__im);
-    var true_ = Object.create(classes.True.__im);
+    defClass("Boolean", globals.Object, {}, {}, [], []);
+    defClass("False", globals.Boolean, {}, {}, [], []);
+    defClass("True", globals.Boolean, {}, {}, [], []);
+    var false_ = Object.create(globals.False.__im);
+    var true_ = Object.create(globals.True.__im);
 
     function toJSBoolean(v) {
         return v === true_ ||
@@ -878,25 +878,25 @@ var console;
     }
 
     // --- Characters
-    defClass("Character", classes.Magnitude, {
+    defClass("Character", globals.Magnitude, {
         "=": function (that) { return this === that ? true_ : false_; }
     }, {}, ['_value'], ['_CharacterTable']);
-    var chars = [], chr_im = classes.Character.__im;
+    var chars = [], chr_im = globals.Character.__im;
     for (var i = 0; i < 256; i++) {
         var c = Object.create(chr_im);
         c._value = getSmallInteger(i);
         chars[i] = c;
     }
-    classes.Character._CharacterTable = Array_(chars);
+    globals.Character._CharacterTable = Array_(chars);
 
     // --- Blocks
     // This is extremely iffy. At least some of the methods in BlockContext
     // are just hopelessly wrong.
-    defClass("InstructionStream", classes.Object, {}, {},
+    defClass("InstructionStream", globals.Object, {}, {},
              ['_sender', '_pc'], ['_SpecialConstants']);
-    defClass("ContextPart", classes.InstructionStream, {}, {},
+    defClass("ContextPart", globals.InstructionStream, {}, {},
              ['_stackp'], ['_PrimitiveFailToken']);
-    defClass("BlockContext", classes.ContextPart, {
+    defClass("BlockContext", globals.ContextPart, {
         numArgs: function Block$numArgs() {
             return this.__fn.length;
         },
@@ -938,7 +938,7 @@ var console;
             }
         }
     }, {}, ['_nargs', '_startpc', '_home'], [], 1 /*variableSubclass*/);
-    var Block_im = classes.BlockContext.__im;
+    var Block_im = globals.BlockContext.__im;
     function Block(fn) {
         var obj = Object.create(Block_im);
         obj.__fn = fn;
@@ -961,13 +961,13 @@ var console;
     function String$basicAt_(i) {
         return getSmallInteger(this.__str.charCodeAt(toJSIndex(i)));
     }
-    defClass("String", classes.ArrayedCollection, {
+    defClass("String", globals.ArrayedCollection, {
         basicAt_: String$basicAt_,
         basicAt_put_: bust,
         byteAt_: String$basicAt_,
         byteAt_put_: bust
     }, {}, [], [], 4);
-    var String_im = classes.String.__im;
+    var String_im = globals.String.__im;
     function getString(str) {
         var obj = Object.create(String_im);
         obj.__str = str;
@@ -976,7 +976,7 @@ var console;
 
     function String_at_put_(str, index, v) {
         // Check index.
-        if (index.__class !== classes.SmallInteger && !index.isInteger())
+        if (index.__class !== globals.SmallInteger && !index.isInteger())
             str.errorNonIntegerIndex();
         var s = str.__str;
         assertEq(typeof s, 'string');
@@ -986,9 +986,9 @@ var console;
 
         // Check value.
         var ch;
-        if (v.__class === classes.Character)
+        if (v.__class === globals.Character)
             ch = String.fromCharCode(v._value.__value);
-        else if (v.__class === classes.SmallInteger || v.isInteger())
+        else if (v.__class === globals.SmallInteger || v.isInteger())
             ch = String.fromCharCode(v.__value);
         else
             str.error_(getString("Strings only store Characters"));
@@ -1000,7 +1000,7 @@ var console;
 
     // --- Symbols
     var symbols = Object.create(null);
-    defClass("Symbol", classes.String, {}, {
+    defClass("Symbol", globals.String, {}, {
         intern_: function Symbol$intern_(str) {
             return Symbol(str.__str);
         },
@@ -1029,7 +1029,7 @@ var console;
             throw new Error("Symbol#thatStarts_skipping_");
         },
     }, [], [], 4);
-    var Symbol_im = classes.Symbol.__im;
+    var Symbol_im = globals.Symbol.__im;
     function Symbol(s) {
         var obj = symbols[s];
         if (!obj) {
@@ -1042,9 +1042,9 @@ var console;
 
     // Now that we can make symbols, fix up the _name field of the classes
     // already defined.
-    for (var name in classes) {
-        assertEq(classes[name]._name, nil);
-        classes[name]._name = Symbol(name);
+    for (var name in globals) {
+        assertEq(globals[name]._name, nil);
+        globals[name]._name = Symbol(name);
     }
 
 
@@ -1052,15 +1052,15 @@ var console;
 
     var sysDict;
     function init() {
-        sysDict = classes.SystemDictionary.new();
+        sysDict = globals.SystemDictionary.new();
 
         // Before SystemDictionary>>at:put: can be called, the global variable
         // 'Undeclared' must already be accessible.
-        classes.Dictionary.__im.at_put_.call(sysDict, Symbol("Undeclared"), classes.Dictionary.new());
+        globals.Dictionary.__im.at_put_.call(sysDict, Symbol("Undeclared"), globals.Dictionary.new());
 
         sysDict.at_put_(Symbol("Smalltalk"), sysDict);
 
-        //sysDict.newChanges_(classes.ChangeSet.new());
+        //sysDict.newChanges_(globals.ChangeSet.new());
     }
 
     function getGlobal(name) {
@@ -1149,7 +1149,7 @@ var console;
     // === Exports
 
     SmalltalkRuntime = {
-        classes: classes,
+        globals: globals,
         nil: nil,
         true: true_,
         false: false_,

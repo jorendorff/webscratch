@@ -712,7 +712,7 @@ var smalltalk;
 
         var subclass_re = /^(subclass|(?:variable(?:Word|Byte|)|weak)Subclass):instanceVariableNames:classVariableNames:poolDictionaries:category:$/;
 
-        var classes = Object.create(null);
+        var classes_ast = Object.create(null);
 
         var i = 0, a = [];
         var re = new RegExp(directive_re, "g");
@@ -731,8 +731,8 @@ var smalltalk;
                     check(expr.receiver.receiver.type === "Identifier", "2");
                     check(expr.receiver.message.selector === "class", "3");
                     var className = expr.receiver.receiver.id;
-                    check(className in classes, "class not found: " + className);
-                    var cls = classes[className];
+                    check(className in classes_ast, "class not found: " + className);
+                    var cls = classes_ast[className];
                     check(expr.message.args[0].type === "String", "4");
                     var ivn = expr.message.args[0].value.split(" ");
                     if (ivn[ivn.length - 1] === "")
@@ -757,7 +757,7 @@ var smalltalk;
                     check(args[4].type === "String" ,"9");
                     var cat = args[4].value;
                     var cls = ClassDef(subclassKind, name, superclassName, ivn, cvn, pd, cat);
-                    classes[name] = cls;
+                    classes_ast[name] = cls;
                 }
             } else if (m[3] !== undefined) {
                 // Class comment, skip it
@@ -779,9 +779,9 @@ var smalltalk;
                 check(x.message.selector === "methodsFor:" ||
                       x.message.selector === "methodsFor:stamp:", "14");
                 check(x.message.args[0].type === "String", "15");
-                check(className in classes, "method has unrecognized class name");
+                check(className in classes_ast, "method has unrecognized class name");
                 var methodGroup = x.message.args[0].value;
-                var cls = classes[className];
+                var cls = classes_ast[className];
                 var def = parse(m[5].replace(/!!/g, '!'), "method");
                 if (def.selector in cls[kind]) {
                     console.warn("Method defined more than once: " +
@@ -818,7 +818,7 @@ var smalltalk;
                     classMethods: Object.create(null),
                     weirdness: []};
         }
-        return classes;
+        return classes_ast;
     }
 
     function parseExpr(s) {
@@ -837,7 +837,7 @@ var smalltalk;
     // method with selector s1 which sends a message with selector s2
     // to anything.
     //
-    function callGraph(classes) {
+    function callGraph(classes_ast) {
         var messages = Object.create(null);
         function addVertex(s) {
             if (s in messages)
@@ -917,9 +917,9 @@ var smalltalk;
             }
         }
 
-        var classNames = Object.keys(classes);
+        var classNames = Object.keys(classes_ast);
         for (var i = 0; i < classNames.length; i++) {
-            var cls = classes[classNames[i]];
+            var cls = classes_ast[classNames[i]];
             process(cls.methods, cls.name);
             process(cls.classMethods, cls.name + " class");
         }

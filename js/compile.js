@@ -102,7 +102,7 @@
         return val.type in inlineableTypes;
     }
 
-    function inlineableMethods(classes) {
+    function inlineableMethods(classes_ast) {
         // A table of candidates for optimization. Each entry has a selector
         // for the key and either a method object or false for the value. A
         // method object means there is exactly one method (so far)
@@ -111,8 +111,8 @@
         // not inlineable.
         var candidates = Object.create(null);
 
-        for (var name in classes) {
-            var cls = classes[name];
+        for (var name in classes_ast) {
+            var cls = classes_ast[name];
             for (var selector in cls.methods) {
                 var method = cls.methods[selector];
                 if (selector in candidates || !isInlineable(method)) {
@@ -140,13 +140,13 @@
     }
     RuntimeClassInfo.prototype = {
         hasClass: function hasClass(cls) {
-            return cls in this.runtime.classes;
+            return cls in this.runtime.globals;
         },
         getSuperclass: function getSuperclass(cls) {
-            return this.runtime.classes[cls].superclass()._name.__str;
+            return this.runtime.globals[cls].superclass()._name.__str;
         },
         hasInstVar: function hasInstVar(cls, name) {
-            var c = this.runtime.classes[cls];
+            var c = this.runtime.globals[cls];
             var sup = c.superclass();
             for (var i = (sup === this.runtime.nil ? 0 : sup.__iv.length); i <  c.__iv.length; i++)
                 if (c.__iv[i] === name)
@@ -154,13 +154,13 @@
             return false;
         },
         hasClassVar: function hasClassVar(cls, name) {
-            return this.runtime.classes[cls].hasOwnProperty(name);
+            return this.runtime.globals[cls].hasOwnProperty(name);
         },
         getAllInstVarNames: function getAllInstVarNames(cls) {
-            return [].concat(this.runtime.classes[cls].__iv);
+            return [].concat(this.runtime.globals[cls].__iv);
         },
         getClassKind: function getClassKind(cls) {
-            var flags = this.runtime.classes[cls].__flags;
+            var flags = this.runtime.globals[cls].__flags;
             for (var kind in subclassKindToFlags)
                 if (subclassKindToFlags[kind] === flags)
                     return kind;
