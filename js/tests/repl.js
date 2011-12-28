@@ -35,6 +35,8 @@
                 print(val.printString().__str);
             } catch (exc) {
                 print("*** " + exc.name + ": " + exc.message);
+                if (exc.stack)
+                    print(exc.stack.replace(/^/mg, '        '));
             }
             print();
         }
