@@ -1,4 +1,5 @@
 load("../BigInt.js");
+load("../ast.js");
 load("../parse.js");
 
 (function () {

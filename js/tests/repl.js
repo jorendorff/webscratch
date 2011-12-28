@@ -43,7 +43,9 @@
     try {
         load("../BigInt.js");
         load("../smalltalk.js");
+        load("../ast.js");
         load("../parse.js");
+        load("../bind.js");
         load("../compile.js");
         load("../deadcode.js");
 

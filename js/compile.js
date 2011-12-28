@@ -1,5 +1,3 @@
-// Current bug: self doesn't work in cascade expressions.
-
 (function () {
     "use strict";
 
@@ -32,6 +30,11 @@
                ? s.replace(/:/g, "_")
                : "'" + s.replace(/\\/g, "\\\\") + "'";  //);//
     }
+
+    // squiggleNames and toJSFunctionName are used to compute the display name
+    // of JS functions that implement methods. These names don't affect the
+    // behavior of the program, but they appear in JS error stacks, where an
+    // informative method name is invaluable.
 
     var squiggleNames = {
         "+": "plus",
@@ -143,7 +146,8 @@
             return cls in this.runtime.globals;
         },
         getSuperclass: function getSuperclass(cls) {
-            return this.runtime.globals[cls].superclass()._name.__str;
+            var scls = this.runtime.globals[cls].superclass();
+            return scls === this.runtime.nil ? null : scls._name.__str;
         },
         hasInstVar: function hasInstVar(cls, name) {
             var c = this.runtime.globals[cls];
@@ -154,7 +158,7 @@
             return false;
         },
         hasClassVar: function hasClassVar(cls, name) {
-            return this.runtime.globals[cls].hasOwnProperty(name);
+            return Object.prototype.hasOwnProperty.call(this.runtime.globals[cls], name);
         },
         getAllInstVarNames: function getAllInstVarNames(cls) {
             return [].concat(this.runtime.globals[cls].__iv);
@@ -506,8 +510,11 @@
                 case "False":
                 case "Self":
                 case "ThisContext":
-                case "Local":
                 case "Identifier":
+                case "Local":
+                case "InstVar":
+                case "ClassVar":
+                case "Global":
                 case "Character":
                 case "String":
                 case "Symbol":
@@ -669,17 +676,19 @@
                 case "ThisContext":
                     return "__smalltalk.getThisContext()";
 
+                case "Identifier":
+                    throw new Error("internal error: bind phase did not bind identifier");
+
                 case "Local":
                     return toJSName(n.id);
 
-                case "Identifier":
-                    for (var cls = comp.currentClass; cls; cls = comp.classInfo.getSuperclass(cls)) {
-                        // Is this really the right order?
-                        if (comp.classInfo.hasInstVar(cls, n.id))
-                            return thisObject() + "._" + n.id;
-                        else if (comp.classInfo.hasClassVar(cls, n.id))
-                            return "_" + cls + "._" + n.id;
-                    }
+                case "InstVar":
+                    return translateExpr(n.obj, POSTFIX_PREC, indent) + "._" + n.id;
+
+                case "ClassVar":
+                    return "_" + n.className + "._" + n.id;
+
+                case "Global":
                     if (!comp.classInfo.hasClass(n.id)) {
                         if (comp.unknownNames.indexOf(n.id) === -1) {
                             comp.unknownNames.push(n.id);
@@ -766,7 +775,10 @@
                                 args = thisObject() + ", " + args;
                             else
                                 args = thisObject();
-                            return "_" + comp.classInfo.getSuperclass(comp.currentClass) +
+                            var scls = comp.classInfo.getSuperclass(comp.currentClass);
+                            if (scls === null)
+                                throw new Error("super cannot be used in class Object");
+                            return "_" + scls +
                                    (isInstanceMethod ? ".__im" : "") +
                                    messageJSName(msg) + ".call(" + args + ")";
                         }
@@ -778,7 +790,9 @@
                             assertEq(seq[0].type, "AnswerExpr");
                             if (isEffectFree(n.receiver))
                                 return translateExpr(seq[0].expr, ASSIGN_PREC, indent + "    ");
-                        } else if (target === "ifTrue:" && msg.args[0].type === "Block") {
+                        }
+
+                        if (target === "ifTrue:" && msg.args[0].type === "Block") {
                             return jsIfExpr(translateExpr(rcv, POSTFIX_PREC, indent + "    "),
                                             translateExpr(msg.args[0].body, ASSIGN_PREC, indent + "    "),
                                             comp.nil);
@@ -794,9 +808,9 @@
                             return jsIfExpr(translateExpr(n.receiver, POSTFIX_PREC, indent + "    "),
                                             translateExpr(ifTrueBlock.body, ASSIGN_PREC, indent + "    "),
                                             translateExpr(ifFalseBlock.body, ASSIGN_PREC, indent + "    "));
-                        } else {
-                            return translateExpr(rcv, POSTFIX_PREC, indent2) + translateMessage(msg, indent2);
                         }
+
+                        return translateExpr(rcv, POSTFIX_PREC, indent2) + translateMessage(msg, indent2);
                     }
 
                 case "CascadeExpr":
@@ -926,6 +940,9 @@
     function translate(classes_ast, objects_ast) {
         var c = new Compilation(new StaticClassInfo(classes_ast));
 
+        // Bind phase.
+        smalltalk.bindNames(c.classInfo, classes_ast);
+
         // Compile all the classes.
         var classdefs = Object.create(null);
         for (var name in classes_ast) {
@@ -961,6 +978,7 @@
 
     function compileMethodLive(runtime, ast) {
         var comp = new Compilation(new RuntimeClassInfo(runtime));
+        smalltalk.bindNamesInMethod(comp.classInfo, "UndefinedObject", ast);
         var code = comp.translateMethod("UndefinedObject", {method: ast}, true);
         assert(/^'': function/.test(code));
         code = comp.wrapOutput("    var $code = {" + code + "};\n" +

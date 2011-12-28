@@ -61,8 +61,6 @@
 // 6 gcd: 3 + 1; factorial ===> Cascade(6, [gcd: 3 + 1, factorial]) = 720
 //                          not 6 gcd: Cascade(3, [+ 1, factorial]) = 6
 
-var smalltalk;
-
 (function () {
     "use strict";
 
@@ -151,47 +149,7 @@ var smalltalk;
             p++;
         }
 
-
-        // === Model
-
-        var _nil = {type: "Nil"};
-        function Nil() { return _nil; }
-        var _true = {type: "True"};
-        function True() { return _true; }
-        var _false = {type: "False"};
-        function False() { return _false; }
-        var _self = {type: "Self"};
-        function Self() { return _self; }
-        var _super = {type: "Super"};
-        function Super() { return _super; }
-        var _thisContext = {type: "ThisContext"};
-        function ThisContext() { return _thisContext; }
-        function Local(id) { return {type: "Local", id: id}; }
-        function Identifier(id) { return {type: "Identifier", id: id}; }
-        function Message(selector, args) { return {type: "Message", selector: selector, args: args}; }
-        function MessageExpr(rec, msg) { return {type: "MessageExpr", receiver: rec, message: msg}; }
-        function Character(c) { return {type: "Character", value: c}; }
-        function String(v) { return {type: "String", value: v}; }
-        function Symbol(v) { return {type: "Symbol", value: v}; }
-        function Integer(v) { return {type: "Integer", value: v}; }
-        function LargeInteger(v) { return {type: "LargeInteger", value: v}; }
-        function Float(v) { return {type: "Float", value: v}; }
-        function ConstantArray(arr) { return {type: "ConstantArray", elements: arr}; }
-        function ArrayExpr(arr) { return {type: "ArrayExpr", elements: arr}; }
-        function CascadeExpr(head, msgs) {
-            return {type: "CascadeExpr", head: head, messages: msgs};
-        }
-        function AssignExpr(left, right) { return {type: "AssignExpr", left: left, right: right}; }
-        function Primitive(primitive, module) { return {type: "Primitive", primitive: primitive, module: module}; }
-        function AnswerExpr(e) { return {type: "AnswerExpr", expr: e}; }
-        function Block(params, locals, body) {
-            return {type: "Block", params: params, locals: locals, body: body};
-        }
-        function ExprSeq(seq) { return {type: "ExprSeq", seq: seq}; }
-        function MethodDefinition(selector, args, locals, body) {
-            return {type: "MethodDefinition", selector: selector, args: args, locals: locals, body: body};
-        }
-
+        var ast = smalltalk.ast;
 
         // === Lexical scope state
 
@@ -225,17 +183,17 @@ var smalltalk;
 
         function idExpr(t) {
             switch (t) {
-            case "nil":         return Nil();
-            case "true":        return True();
-            case "false":       return False();
-            case "self":        return Self();
-            case "super":       return Super();
-            case "thisContext": return ThisContext();
+            case "nil":         return ast.Nil();
+            case "true":        return ast.True();
+            case "false":       return ast.False();
+            case "self":        return ast.Self();
+            case "super":       return ast.Super();
+            case "thisContext": return ast.ThisContext();
             default:
                 if (haveLocal(t))
-                    return Local(t);
+                    return ast.Local(t);
                 else
-                    return Identifier(t);
+                    return ast.Identifier(t);
             }
         }
 
@@ -254,7 +212,7 @@ var smalltalk;
             if (m[4] !== undefined || (m[5] !== undefined && Number(m[5]) < 0)) {
                 // Decimal point or scientific notation with negative exponent.
                 check(m[3] === undefined, "not supported: decimal points or scientific notation in non-decimal number literals " + s);
-                return Float(+s);
+                return ast.Float(+s);
             }
 
             // If we get here, s is an integer constant. Extract the base and digits.
@@ -294,9 +252,9 @@ var smalltalk;
             if (sign)
                 n = -n;
             if ((0xc0000000|0) < n && n <= 0x3fffffff)
-                return Integer(n);
+                return ast.Integer(n);
             else
-                return LargeInteger(sign + hex);
+                return ast.LargeInteger(sign + hex);
         }
 
 
@@ -325,19 +283,19 @@ var smalltalk;
                 return constantArray();
             } else if (t[0] === "$") {
                 p++;
-                return Character(t[1]);
+                return ast.Character(t[1]);
             } else if (t[0] === "'") {
                 p++;
-                return String(parseString(t));
+                return ast.String(parseString(t));
             } else if (t.match(/^[A-Za-z]/)) {
                 p++;
-                return Symbol(t);
+                return ast.Symbol(t);
             } else if (t.match(/^-?[0-9]/)) {
                 p++;
                 return number(t);
             } else if (isOperator(t) || isPunctuation(t)) {
                 p++;
-                return Symbol(t);
+                return ast.Symbol(t);
             } else {
                 fail("expected constant expression, got: " + t);
             }
@@ -352,7 +310,7 @@ var smalltalk;
                 arr[arr.length] = constant();
             }
             require(")");
-            return ConstantArray(arr);
+            return ast.ConstantArray(arr);
         }
 
         // arrayExpr ::= "{" (expr ".")* expr "."? "}"
@@ -366,7 +324,7 @@ var smalltalk;
                     require(".");
             }
             require("}");
-            return ArrayExpr(arr);
+            return ast.ArrayExpr(arr);
         }
 
         // symbol ::= "#" (string | identifier | operator | punctuation)
@@ -386,10 +344,10 @@ var smalltalk;
                 return arrayExpr();
             } else if (t[0] === "$") {
                 p++;
-                return Character(t[1]);
+                return ast.Character(t[1]);
             } else if (t[0] === "'") {
                 p++;
-                return String(parseString(t));
+                return ast.String(parseString(t));
             } else if (t.charAt(0) === "#") {
                 while (t === "#")
                     t = tokens[++p];
@@ -399,10 +357,10 @@ var smalltalk;
                     return constantArray();
                 } else if (t.match(/^[A-Za-z]/) || isOperator(t) || isPunctuation(t) || t === ")") {
                     p++;
-                    return Symbol(t);
+                    return ast.Symbol(t);
                 } else if (t[0] === "'") {
                     p++;
-                    return Symbol(parseString(t));
+                    return ast.Symbol(parseString(t));
                 } else {
                     fail("expected identifier, string, operator, or ( after #; got: " + t);
                 }
@@ -427,7 +385,7 @@ var smalltalk;
         function unaryExpr() {
             var b = atomExpr();
             while (isId(tokens[p]))
-                b = MessageExpr(b, message());
+                b = ast.MessageExpr(b, message());
             return b;
         }
 
@@ -435,7 +393,7 @@ var smalltalk;
         function binaryExpr() {
             var b = unaryExpr();
             while (isOperator(tokens[p]))
-                b = MessageExpr(b, message());
+                b = ast.MessageExpr(b, message());
             return b;
         }
 
@@ -443,7 +401,7 @@ var smalltalk;
         function keywordExpr() {
             var b = binaryExpr();
             if (isKeyword(tokens[p]))
-                b = MessageExpr(b, message());
+                b = ast.MessageExpr(b, message());
             return b;
         }    
 
@@ -456,10 +414,10 @@ var smalltalk;
             var t = tokens[p];
             if (isOperator(t)) {
                 p++;
-                return Message(t, [unaryExpr()]);
+                return ast.Message(t, [unaryExpr()]);
             } else if (isId(t)) {
                 p++;
-                return Message(t, []);
+                return ast.Message(t, []);
             } else if (isKeyword(t)) {
                 var selector = '';
                 var args = [];
@@ -467,7 +425,7 @@ var smalltalk;
                     selector += tokens[p++];
                     args[args.length] = binaryExpr();
                 }
-                return Message(selector, args);
+                return ast.Message(selector, args);
             } else {
                 fail("expected message after ';', got: " + t);
             }
@@ -482,7 +440,7 @@ var smalltalk;
                     p++;
                     arr[arr.length] = message();
                 }
-                e = CascadeExpr(e, arr);
+                e = ast.CascadeExpr(e, arr);
             }
             return e;
         }
@@ -499,7 +457,7 @@ var smalltalk;
                     assert(left.type === "Local" || left.type === "Identifier", "unexpected name on lhs of assignment");
                     assert(tokens[p] === b ,"unexpected parse of lhs of assignment");
                     p++;
-                    return AssignExpr(left, expr());
+                    return ast.AssignExpr(left, expr());
                 }
             }
             return cascadeExpr();
@@ -547,7 +505,7 @@ var smalltalk;
                     module = null;
                 }
                 require(">");
-                arr[0] = Primitive(primitive, module);
+                arr[0] = ast.Primitive(primitive, module);
             }
 
             while (p < tokens.length && tokens[p] !== "^" && tokens[p] !== delim) {
@@ -565,12 +523,12 @@ var smalltalk;
 
             if (p < tokens.length && tokens[p] === "^") {
                 p++;
-                arr[arr.length] = AnswerExpr(expr());
+                arr[arr.length] = ast.AnswerExpr(expr());
                 if (tokens[p] === ".")
                     p++;
             }
 
-            return ExprSeq(arr);
+            return ast.ExprSeq(arr);
         }
 
         // params ::= (":" identifier)+ "|"
@@ -589,7 +547,7 @@ var smalltalk;
             var loc, body;
             if (tokens[p] === "]") {
                 loc = [];
-                body = ExprSeq([]);
+                body = ast.ExprSeq([]);
             } else {
                 if (params.length)
                     require("|");
@@ -597,7 +555,7 @@ var smalltalk;
                 body = withScope(params.concat(loc), exprSeq, "]");
             }
             require("]");
-            return Block(params, loc, body);
+            return ast.Block(params, loc, body);
         }
 
         function messageSignature() {
@@ -638,13 +596,13 @@ var smalltalk;
             var args = pair[1];
             var loc = locals();
             var body = withScope(args.concat(loc), exprSeq, undefined);
-            return MethodDefinition(selector, args, loc, body);
+            return ast.MethodDefinition(selector, args, loc, body);
         }
 
         function methodNoArgs() {
             var loc = locals();
             var body = withScope(loc, exprSeq, undefined);
-            return MethodDefinition('', [], loc, body);
+            return ast.MethodDefinition('', [], loc, body);
         }
 
         // SqueakSource ::= string ! SqueakSourceElement*
@@ -833,108 +791,9 @@ var smalltalk;
         return parse(s, "methodNoArgs");
     }
 
-    // Return an object G such that G[s1][s2] is true if there is a
-    // method with selector s1 which sends a message with selector s2
-    // to anything.
-    //
-    function callGraph(classes_ast) {
-        var messages = Object.create(null);
-        function addVertex(s) {
-            if (s in messages)
-                return messages[s];
-            return (messages[s] = Object.create(null));
-        }
-
-        function addEdge(s1, s2) {
-            addVertex(s1)[s2] = true;
-        }
-
-        function process(methods, className) {
-            function visit(n) {
-                switch (n.type) {
-                case "MessageExpr":
-                    visit(n.receiver);
-                    visit(n.message);
-                    break;
-
-                case "Message":
-                    addEdge(name, n.selector);
-                    for (var i = 0; i < n.args.length; i++)
-                        visit(n.args[i]);
-                    if (n.selector === "add:action:") {
-		        //console.log(name + " calls add:action: " + JSON.stringify(n.args[1]));
-                        if (n.args[1].type === "Symbol") {
-                            addEdge(name, n.args[1].value);
-			    if (n.args[1].value === "aboutScratch")
-			        console.log(name + " calls add:action: #" + n.args[1].value);
-			}
-                    }
-                    break;
-
-                case "ArrayExpr":
-                    for (var i = 0; i < n.elements.length; i++)
-                        visit(n.elements[i]);
-                    break;
-
-                case "Block":
-                    visit(n.body);
-                    break;
-
-                case "CascadeExpr":
-                    visit(n.head.receiver);
-                    visit(n.head.message);
-                    for (var i = 0; i < n.messages.length; i++)
-                        visit(n.messages[i]);
-                    break;
-
-                case "AssignExpr":
-                    visit(n.left);
-                    visit(n.right);
-                    break;
-
-                case "AnswerExpr":
-                    visit(n.expr);
-                    break;
-
-                case "ExprSeq":
-                    for (var i = 0; i < n.seq.length; i++)
-                        visit(n.seq[i]);
-                    break;
-
-                case "Primitive":
-                    if (typeof n.primitive === 'string')
-                        addEdge(name, n.primitive);
-                    break;
-                }
-            }
-            var names = Object.keys(methods);
-            for (var i = 0; i < names.length; i++) {
-                var name = names[i], m = methods[name];
-                addVertex(name);
-                visit(m.method.body);
-                if (name === "computeFunction:of:")
-                    console.log("computeFunction:of: calls " + uneval(Object.keys(messages[name])));
-            }
-        }
-
-        var classNames = Object.keys(classes_ast);
-        for (var i = 0; i < classNames.length; i++) {
-            var cls = classes_ast[classNames[i]];
-            process(cls.methods, cls.name);
-            process(cls.classMethods, cls.name + " class");
-        }
-        return messages;
-    }
-
-    var characters = [];
-
-    smalltalk = {
-        tokenize: tokenize,
-        parseSqueakSource: parseSqueakSource,
-        parseMethod: parseMethod,
-        parseExpr: parseExpr,
-        parseMethodNoArgs: parseMethodNoArgs,
-        callGraph: callGraph,
-        characters: characters
-    };
+    smalltalk.tokenize = tokenize;
+    smalltalk.parseSqueakSource = parseSqueakSource;
+    smalltalk.parseMethod = parseMethod;
+    smalltalk.parseExpr = parseExpr;
+    smalltalk.parseMethodNoArgs = parseMethodNoArgs;
 })();

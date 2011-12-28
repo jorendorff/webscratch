@@ -5,8 +5,10 @@
 
     load("../BigInt.js");
     load("../smalltalk.js");
+    load("../ast.js");
     load("../parse.js");
     load("../deadcode.js");
+    load("../bind.js");
     load("../compile.js");
 
     var dump = argv.length === 1 && argv[0] === "-d";

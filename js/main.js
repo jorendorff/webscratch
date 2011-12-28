@@ -5,8 +5,10 @@
 
     load('smalltalk.js');
     load('BigInt.js');
+    load('ast.js');
     load('parse.js');
     load('deadcode.js');
+    load('bind.js');
     load('compile.js');
 
     if (argv.length != 2) {
