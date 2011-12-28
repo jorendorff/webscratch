@@ -817,12 +817,58 @@ var console;
     defClass("LargePositiveInteger", globals.Integer, {}, {}, [], [], 4);
     defClass("LargeNegativeInteger", globals.LargePositiveInteger, {}, {}, [], [], 4);
 
+    // In Squeak, there is no special Float>>at: or Float>>basicAt: function;
+    // instead Float has two 32-bit words of variable-length data containing the
+    // floating-point number. Instead of duplicating that craziness, overload
+    // at: and basicAt: here. (This is craziness too.)
+    function Float$at_(index) {
+        var i = toJSIndex(index);
+        if (i < 0 || i > 1)
+            this.errorSubscriptBounds_(index);
+
+        // Compute the sign bit.
+        var signbit = 0;
+        var f = this.__value;
+        if (f < 0 || (f === 0 && 1/f < 0)) {
+            signbit = 1;
+            f = -f;
+        }
+
+        // Compute the exponent and mantissa.
+        var e;
+        if (f === 0) {
+            e = 0;
+        } else if (f === 1/0) {
+            e = 0x7ff;
+            f = 0;
+        } else {
+            e = 1075;
+            while (f < 0x10000000000000) {  // 2^52
+                f *= 2;
+                e--;
+            }
+            while (f >= 0x20000000000000) { // 2^53
+                f /= 2;
+                e++;
+            }
+            f -= 0x10000000000000; // strip off the implicit 1 bit
+        }
+
+        if (i === 0)
+            return getInteger(signbit * 0x80000000 + e * 0x100000 + ((f / 0x100000000) >>> 0));
+        else
+            return getInteger(f >>> 0);
+    }
+
     defClass("Float", globals.Number, {
         arcTan: function () { return getFloat(Math.atan(this.__value)); },
         exp:    function () { return getFloat(Math.exp(this.__value)); },
         ln:     function () { return getFloat(Math.log(this.__value)); },
         sin:    function () { return getFloat(Math.sin(this.__value)); },
-        sqrt:   function () { return getFloat(Math.sqrt(this.__value)); }
+        sqrt:   function () { return getFloat(Math.sqrt(this.__value)); },
+
+        at_: Float$at_,
+        basicAt_: Float$at_
     }, {}, [], []);
     var Float_class = globals.Float;
     var Float_im = Float_class.__im;

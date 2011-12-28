@@ -13838,6 +13838,7 @@ runTests
 	     testCompilerGlobals;
 	     testIdentifiers;
 	     testIntegers;
+	     testFloats;
 	     testStrings;
 	     testPrimitives;
 	     testClasses;
@@ -13937,6 +13938,18 @@ testIntegers
 	self check: [16r0123456789ABCDEF0123456789ABCDEF = 1512366075204170929049582354406559215].
 	self check: [16r0123456789ABCDEF0123456789ABCDEF ~= 1512366075204170929049582354406559214].
 	self check: [16r0123456789ABCDEF0123456789ABCDEF ~= 1512366075204170929049582354406559216].
+! !
+
+!HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
+testFloats
+	self check: [((1 / 3.0) at: 1) = 16r3FD55555];
+	     check: [((1 / 3.0) at: 2) = 16r55555555];
+	     check: [(Float negativeZero at: 1) = 16r80000000];
+	     check: [0.0 sign = 0];
+	     check: [Float negativeZero sign = -1].
+             "printString can't work yet"
+	     "check: [0.0 printString = '0.0']"
+	     "check: [Float negativeZero printString = '-0.0']"
 ! !
 
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
