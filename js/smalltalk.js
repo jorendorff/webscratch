@@ -217,29 +217,37 @@ var console;
         switch (cls.__flags) {
         case 0:
             break;
-        case 1: case 2: case 3:
+        case 1: case 2:
             obj.__array = [];
             break;
+        case 3:
+            // WordArray gets an array of 32-bit unsigned integers.
+            obj.__array = new Uint32Array;
         case 4: case 6:
             // ByteArrays and LargeIntegers get a byte array.
             // Strings and Symbols get a string.
             if (cls === globals.String || Object.prototype.isPrototypeOf(globals.String.__im, cls.__im))
                 obj.__str = "";
             else
-                obj.__array = new Uint8Array();
+                obj.__array = new Uint8Array;
             break;
         }
         return obj;
     }
 
     function toJSNaturalNumber(i) {
-        if (i.__class === SmallInteger_class) {
+        var cls = i.__class;
+        if (cls === SmallInteger_class) {
             assert(i.__value >= 0, "non-negative integer required");
             return i.__value;
+        } else if (cls === globals.LargePositiveInteger) {
+            var arr = i.__array, n = 0;
+            for (var j = 0; j < arr.length; j++)
+                n = (n * 256) + arr[j];
+            assert(n <= 0xffffffff, "large integer out of range");
+            return n;
         }
-        assert(i.isKindOf(globals.Integer), "Integer required");
-        throw new Error("not supported yet: converting " + i.__class._name.__str +
-                        " object to JS number");
+        throw new Error("integer required, got " + i.__class._name.__str);
     }
 
     function basicNew_(cls, size) {
@@ -253,11 +261,14 @@ var console;
         switch (cls.__flags) {
         case 0:
             break;
-        case 1: case 2: case 3:
+        case 1: case 2:
             var len = toJSNaturalNumber(size), arr = [];
             for (var i = 0; i < len; i++)
                 arr[i] = nil;
             obj.__array = arr;
+            break;
+        case 3:
+            obj.__array = new Uint32Array(toJSNaturalNumber(size));
             break;
         case 4: case 6:
             if (cls === globals.String || Object.prototype.isPrototypeOf(globals.String.__im, cls.__im))
@@ -688,7 +699,7 @@ var console;
     primitives[60] = (
         "var $$a = this.__array, $$i = __smalltalk.toJSIndex({0}), $$v = $$a[$$i];\n" +
         "if ($$i >= 0 && $$i < $$a.length)\n" +
-        "    return ($$a instanceof Uint8Array) ? __smalltalk.Integer($$v) : $$v;\n");
+        "    return ($$a instanceof Array) ? $$v : __smalltalk.Integer($$v);\n");
 
     // Object#at:put:, Object#basicAt:put:, LargePositiveInteger#digitAt:put:
     // (This primitive is also used for String#byteAt:put:, but it always
@@ -697,13 +708,10 @@ var console;
         "var $$a = this.__array;\n" +
         "if ($$a) {\n" +
         "    var $$i = __smalltalk.toJSIndex({0});\n" +
-        "    if ($$a instanceof Uint8Array) {\n" +
-        "        assertEq(typeof {1}.__value, 'number');\n" +
-        "        $$a[$$i] = {1}.__value;\n" +
-        "    } else {\n" +
-        "        $$a[$$i] = {1};\n" +
+        "    if ($$i >= 0 && $$i < $$a.length) {\n" +
+        "        $$a[$$i] = ($$a instanceof Array ? {1} : __smalltalk.toJSNaturalNumber({1}));\n" +
+        "        return {1};\n" +
         "    }\n" +
-        "    return {1};\n" +
         "}\n");
 
     // Object#size, Object#basicSize, LargePositiveInteger#digitLength.
@@ -1202,6 +1210,7 @@ var console;
         basicNew_: basicNew_,
         toJSArrayReadOnly: toJSArrayReadOnly,
         toJSIndex: toJSIndex,
+        toJSNaturalNumber: toJSNaturalNumber,
         quit: quitPrimitive,
         initObjectGraph: initObjectGraph
     };

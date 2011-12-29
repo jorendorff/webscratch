@@ -7863,6 +7863,17 @@ hash
 ! !
 
 
+ArrayedCollection variableWordSubclass: #WordArray
+	instanceVariableNames: ''
+	classVariableNames: ''
+	poolDictionaries: ''
+	category: 'Collections-Arrayed'!
+!WordArray commentStamp: '<historical>' prior: 0!
+WordArrays store 32-bit unsigned Integer values.
+!
+
+
+
 Magnitude subclass: #LookupKey
 	instanceVariableNames: 'key '
 	classVariableNames: ''
@@ -13840,6 +13851,7 @@ runTests
 	     testIntegers;
 	     testFloats;
 	     testStrings;
+	     testArrays;
 	     testPrimitives;
 	     testClasses;
 	     testIfError.
@@ -13928,6 +13940,8 @@ testIntegers
 	self check: [16r3FFFFFFF class == SmallInteger].
 	"self check: [-16r40000000 class == SmallInteger]."  "bug: we fail to consider that it is negative when checking to see if it is in SmallInteger domain."
 
+	self check: [(16r12345678 bitAnd: 255) = 120].
+
 	self check: [16r3FFFFFFF + 1 = 16r40000000].
 	self check: [-16r40000000 negated = 16r40000000].
 	self check: [(16rF0F0F0F0 bitXor: 16r0F0F0F0F) = 16rFFFFFFFF].
@@ -13961,6 +13975,25 @@ testStrings
 	     check: ['a' ~= 'z'];
 	     check: ['abcdef' ~= 'abcxyz'];
 	     check: [('abc', 'xyz') = 'abcxyz'].
+! !
+
+!HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
+testArrays
+	self check: [((ByteArray new: 4) at: 1) = 0];
+	     check: [((ByteArray new: 4) at: 4) = 0];
+	     check: [
+        	| a |
+		a _ ByteArray new: 1.
+		a at: 1 put: 255.
+                (a at: 1) = 255.].
+
+        self check: [((WordArray new: 4) at: 1) = 0];
+	     check: [((WordArray new: 4) at: 4) = 0];
+	     check: [
+        	| a |
+		a _ WordArray new: 1.
+		a at: 1 put: 16rFFFFFFFF.
+                (a at: 1) = 16rFFFFFFFF.].
 ! !
 
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
