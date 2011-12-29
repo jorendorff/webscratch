@@ -47,6 +47,8 @@ load("../parse.js");
         throw new Error("expected exception, no exception thrown");
     }
 
+    var ast = smalltalk.ast;
+
     // Test tokenization.
     ["\0", "\t", "\n", "\r", "0", "'", "$", "\x7f", "\x80", "\xff"].forEach(function (ch) {
         assertEquals(smalltalk.parseExpr("$" + ch), {type: "Character", value: ch});
@@ -57,7 +59,12 @@ load("../parse.js");
     });
 
     var a = {type: "Symbol", value: "a"};
-    ["#a", "#\n'a'", "####a", "# # # # a", "# # # #\n\ta"].forEach(function (s) {
+    ["#a", "#\n'a'", "#\r'a'", "####a", "# # # # a", "# # # #\n\ta"].forEach(function (s) {
+        assertEquals(smalltalk.parseExpr(s), a);
+    });
+
+    a = ast.Symbol(":a:");
+    ["#:a:", "#':a:'", "#\r    :a:", "#\r    ':a:'"].forEach(function (s) {
         assertEquals(smalltalk.parseExpr(s), a);
     });
 

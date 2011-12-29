@@ -13844,6 +13844,7 @@ To run the tests:
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/1/2011 12:50'!
 runTests
 	self testBasics;
+	     testParser;
 	     testCompilerBlocks;
 	     testCompilerSelf;
 	     testCompilerGlobals;
@@ -13879,6 +13880,24 @@ testBasics
 	self check: [{1. 2. 3. 3. 5. 4. 12} isSorted not].
 
 	self check: [self sailingYear = 1492].
+! !
+
+!HandmadeTests methodsFor: 'tests' stamp: 'jto 5/6/2011 19:55'!
+testParser
+
+        "Test funny tokenization of symbols."
+	self check: [#:a: == #':a:'];
+	     check: [# :a: == #':a:'];
+	     check: [#: asString = ':'];
+	     check: [#(:a:) = {#:. #a:}].
+
+	"Test the selection of which message to split on the left-hand side of ';'."
+	self check: [(1 + 2 sign; + 3) = 4];    "parses as (1 + (2 sign); + 3)"
+	     check: [(1 + (2 sign; + 3)) = 6];  " rather than this"
+
+	     check: [(12 gcd: 6 + 1; - 1) = 11];   "parses as (12 gcd: (6 + 1); - 1)"
+	     check: [(12 gcd: (6 + 1; - 1)) = 1];  "rather than this"
+	     check: [((12 gcd: 6) + 1; - 1) = 5].  "or this"
 ! !
 
 !HandmadeTests methodsFor: 'tests' stamp: 'jto 5/6/2011 19:55'!

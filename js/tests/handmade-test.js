@@ -20,7 +20,7 @@
         var ast = smalltalk.parseSqueakSource(st);
         smalltalk.deadMethods(ast);
 
-        var js = smalltalk.translate(ast, objects_ast);
+        var js = smalltalk.compileImage(ast, objects_ast);
         if (dump)
             print(js);
         var initfn = eval(js);

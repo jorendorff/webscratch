@@ -21,6 +21,6 @@
     var heap_st = read(argv[1]);
     var heap_ast = smalltalk.parseMethodNoArgs(heap_st);
     smalltalk.deadMethods(ast);
-    var js = smalltalk.translate(ast, heap_ast);
+    var js = smalltalk.compileImage(ast, heap_ast);
     print(js);
 })(arguments);

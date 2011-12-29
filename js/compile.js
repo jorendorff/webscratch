@@ -1,3 +1,34 @@
+// Emits JS code for Smalltalk methods.
+//
+// This module defines two methods:
+//     smalltalk.compileImage(classes_ast, objects_ast)
+//         Emit JS code for all the given classes and the given object graph.
+//         This returns a string containing a single JS expression that
+//         evaluates to a function. The function takes one argument,
+//         SmalltalkRuntime, and populates it with classes and objects.
+//
+//     smalltalk.compileMethodLive(runtime, method_ast)
+//         This is used by the repl to compile throw-away code at run time.
+//         It returns a JS function of no arguments. Calling the function
+//         executes the Smalltalk code of method_ast.
+//
+// JavaScript names (all of these are local to the JS function we emit):
+//   _k24 (and other integers) - Constants.
+//   __smalltalk, $B, $G - Runtime support.
+//   _SmallInteger, _Array, _Symbol - Class objects.
+//          These names always match /^_[A-Z][A-Za-z0-9]*$/.
+//   abc - Local variables and arguments always match /^[A-Za-z][A-Za-z0-9]*$/.
+//   this_ - Local variables and arguments whose names happen to be JS keywords
+//          (or 'arguments' or 'eval') are given a trailing underscore.  This
+//          can't collide with anything since Smalltalk identifiers can't
+//          contain underscores.
+//   $a - A special name used by compiler-generated code to implement
+//          return-from-block. The "a" is for "answer".
+//   $$k - Variables used in primitives. Since primitives are just pasted into
+//          the compiled code, they need to use variable names that won't
+//          collide with anything else.  These always match
+//          /^\$\$[A-Za-z0-9]+$/.
+
 (function () {
     "use strict";
 
@@ -937,7 +968,7 @@
         }
     };
 
-    function translate(classes_ast, objects_ast) {
+    function compileImage(classes_ast, objects_ast) {
         var c = new Compilation(new StaticClassInfo(classes_ast));
 
         // Bind phase.
@@ -988,6 +1019,6 @@
         return fn(runtime).bind(runtime.nil);
     }
 
-    smalltalk.translate = translate;
+    smalltalk.compileImage = compileImage;
     smalltalk.compileMethodLive = compileMethodLive;
 })();

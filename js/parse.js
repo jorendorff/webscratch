@@ -1,81 +1,7 @@
-// JavaScript names (all of these are local to the functionball):
-//   _k24 - (and other integers) Constants.
-//   __smalltalk, $B - Runtime support.
-//   _SmallInteger - Class objects. These always match /^_[A-Z][A-Za-z0-9]*$/.
-//   abc - Local variables and arguments always match /^[A-Za-z][A-Za-z0-9]*$/.
-//   this_ - Local variables and arguments whose names happen to be JS keywords
-//          (or 'arguments' or 'eval') are given a trailing underscore.  This
-//          can't collide with anything since Smalltalk identifiers can't
-//          contain underscores.
-//   $a - A special name used by compiler-generated code to implement
-//          return-from-block.
-//   $$k - Variables used in primitives. Since primitives are just pasted into
-//          the compiled code, they need to use variable names that won't
-//          collide with anything else.  These always match
-//          /^\$\$[A-Za-z0-9]+$/.
-//
-// Names of prototype object properties:
-//   .banana() - The method "banana", which takes no arguments.
-//   .name_(s) - The method "name:", which takes 1 argument.
-//   ["+"](x) - The method "+". All such methods take 1 argument.
-//   .at_put_(idx, val) - The method "at:put:", which takes 2 arguments.
-//
-// Object and class instance variables have names starting with an underscore.
-// They are only used in contexts where we know the access will succeed.
-//
-// Classes have a top-secret property __im, which holds all the instance
-// methods.  Objects inherit from that. Classes in turn inherit all their
-// methods from the metaclass's __im object.  Each __im object has a __class
-// property pointing back to the class; these are exactly like .prototype and
-// .constructor.
-//
-// Behavior.__im.basicNew = function () {
-//     var obj = Object.create(this.__im);
-//     var iv = this.__iv;
-//     for (var i = 0; i < iv.length; i++)
-//         Object.defineProperty(obj, iv[i], {configurable: true, enumerable: true, writable: true, value: _nil});
-//     return obj;
-// };
-
-
-// corners:
-//     make a model of the class tree
-//     track instance variables and locals when reading, scoping is so simple
-//     thisContext needs to be implemented
-//     #(-1 -2 -3) size ===> 3, but #(- 1 - 2 - 3) size ===> 6
-
-// but seriously:
-//     need to implement serious compilation
-//     type inference (since the whole system really is, probably, static)
-
-// Bug: should reject `3 ; +2`.
-// tokenizer bug: `# x` with a space must evaluate to #x, as does `# "comment x`
-// todo: evaluate numbers in the parser
-// todo: "currentMethod" variable in translate
-// todo: sane-ify selector name handling
-
-//
-// 2 + 2 factorial; + 2  ===> Cascade(2, [+ 2 factorial, + 2]) = 4
-//                        not 2 + Cascade(2, [factorial, + 2]) = 6
-//
-// 6 gcd: 3 + 1; factorial ===> Cascade(6, [gcd: 3 + 1, factorial]) = 720
-//                          not 6 gcd: Cascade(3, [+ 1, factorial]) = 6
-
 (function () {
     "use strict";
 
     function assert(b, msg) { if (!b) throw new Error("assertion failed: " + msg); }
-
-    // This parser first splits the whole body of a method into tokens, then
-    // turns the tokens into an AST in a separate pass. But it seems very
-    // unlikely now that Squeak actually tokenizes code like this (i.e. without
-    // feedback from the parser). For example,
-    //     #:a: ===> #':a:'
-    //     # :a: ===> #':a:'
-    //     #: asString ===> ':'
-    //     #(:a:) ===> (#: #a:)
-    // just seems impossible without using a different tokenization algorithm
-    // either inside constant lists or after #.
 
     // pseudo ::= nil | true | false | self | super | thisContext
     // identifier ::= /:?[A-Za-z](?:[0-9A-Za-z]|:[A-Za-z])*:?/
@@ -87,7 +13,7 @@
     // character ::= /\$(?:.|\r|\n)/
     // literal ::= number | character | string | symbol
     // operator ::= /[-+`\\/*\\\\~<=>@%|&?!,]+/    (at a guess)
-    // punctuation ::= ":=" | /[_\[\]{}.:|#]/
+    // punctuation ::= any of :=  _  [  ]  {  }  .  :  |  #
     // paren ::=  "(" | ")"
     // token ::= pseudo | identifier | comment | literal | operator | punctuation | paren
 
@@ -177,9 +103,9 @@
 
         function isId(t) { return t && /^[A-Za-z][0-9A-Za-z]*$/.test(t); }
 
-        function isOperator(t) { return t && !!t.match(/^[-+`\/*\\~<=>@%|&?!,]+$/); }
-        function isPunctuation(t) { return t && !!t.match(/[_\[\]{}.:]/); }
-        function isKeyword(t) { return t && !!t.match(/^[A-Za-z][0-9A-Za-z]*:$/); }
+        function isOperator(t) { return t && /^[-+`\/*\\~<=>@%|&?!,]+$/.test(t); }
+        function isPunctuation(t) { return t && /^[_\[\]{}.:]$/.test(t); }
+        function isKeyword(t) { return t && /^[A-Za-z][0-9A-Za-z]*:$/.test(t); }
 
         function idExpr(t) {
             switch (t) {
@@ -287,7 +213,7 @@
             } else if (t[0] === "'") {
                 p++;
                 return ast.String(parseString(t));
-            } else if (t.match(/^[A-Za-z]/)) {
+            } else if (t.match(/^[A-Za-z:]/)) {
                 p++;
                 return ast.Symbol(t);
             } else if (t.match(/^-?[0-9]/)) {
@@ -355,7 +281,7 @@
                     t = stripOctothorpe(t);
                 if (t === "(") {
                     return constantArray();
-                } else if (t.match(/^[A-Za-z]/) || isOperator(t) || isPunctuation(t) || t === ")") {
+                } else if (t.match(/^[A-Za-z:]/) || isOperator(t) || isPunctuation(t) || t === ")") {
                     p++;
                     return ast.Symbol(t);
                 } else if (t[0] === "'") {
