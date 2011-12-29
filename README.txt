@@ -27,10 +27,7 @@ build/sources/ScratchSource1.4/ScratchSources.st.
   - Select the code, control+click on a part of the window below all the
     text, and select "do it (d)".
 
-    If it asks you whether to overwrite a file, say yes.
-
-    When it asks you whether to "FileOut selected sharedPools" or
-    "FileOut sharedPool TextConstants", say yes.
+    When it asks you whether to "FileOut selected sharedPools", say no.
 
     It will take a really long time because it's dumping 28MB+ of data.
     When it's done, Squeak will exit.

@@ -1,4 +1,7 @@
 # Makefile for webscratch.
+#
+# Unfortunately there is a step in the build process that requires a human
+# being to click on something. See README.txt.
 
 BUILD_DIR=build
 
@@ -48,6 +51,7 @@ $(ANY_SCRATCH_SKIN_FILE): original-sources/ScratchSkin1.4.zip
 $(CLASSES_RAW) $(HEAP_RAW): $(ANY_SCRATCH_SOURCE_FILE)
 	@if [ "$(GO)" == "" ]; then \
 	    echo "*** ERROR: You must say the magic word. See the README."; exit 1; fi
+	rm -f $^
 	cd $(BUILD_DIR)/sources/ScratchSource1.4 && \
 	    "$(SQUEAK)" $(abspath $(BUILD_DIR)/sources/ScratchSource1.4/ScratchSourceCode1.4.image)
 	@if [ ! -f $(CLASSES_RAW) -o ! -f $(HEAP_RAW) ]; then \
