@@ -51,14 +51,14 @@ load("../parse.js");
 
     // Test tokenization.
     ["\0", "\t", "\n", "\r", "0", "'", "$", "\x7f", "\x80", "\xff"].forEach(function (ch) {
-        assertEquals(smalltalk.parseExpr("$" + ch), {type: "Character", value: ch});
+        assertEquals(smalltalk.parseExpr("$" + ch), ast.Character(ch));
     });
 
     ["a", "a:", "a:b:", ":", ":x", ":x:", ":x:y", ":x:y:"].forEach(function (s) {
-        assertEquals(smalltalk.parseExpr("#" + s), {type: "Symbol", value: s});
+        assertEquals(smalltalk.parseExpr("#" + s), ast.Symbol(s));
     });
 
-    var a = {type: "Symbol", value: "a"};
+    var a = ast.Symbol("a");
     ["#a", "#\n'a'", "#\r'a'", "####a", "# # # # a", "# # # #\n\ta"].forEach(function (s) {
         assertEquals(smalltalk.parseExpr(s), a);
     });
@@ -69,18 +69,18 @@ load("../parse.js");
     });
 
     ["-1.0e6", "1.0e300", "1e-300", "-1e-300", "1.0e6"].forEach(function (s) {
-        assertEquals(smalltalk.parseExpr(s), {type: "Float", value: Number(s)});
+        assertEquals(smalltalk.parseExpr(s), ast.Float(Number(s)));
     });
 
     [["1e6", 1000000],
      ["1e-0", 1],
      ["2r11e28", 805306368]].forEach(function (pair) {
-        assertEquals(smalltalk.parseExpr(pair[0]), {type: "Integer", value: pair[1]});
-     });
+        assertEquals(smalltalk.parseExpr(pair[0]), ast.Integer(pair[1]));
+    });
 
     [["2r1111e27", "78000000"],
      ["2r111111e26", "FC000000"]].forEach(function (pair) {
-        assertEquals(smalltalk.parseExpr(pair[0]), {type: "LargeInteger", value: pair[1]});
+        assertEquals(smalltalk.parseExpr(pair[0]), ast.LargeInteger(pair[1]));
     });
 
     // Test parsing methods with arguments.
@@ -89,10 +89,7 @@ load("../parse.js");
         selector: "foo:",
         args: ["bar"],
         locals: [],
-        body: {
-            type: "ExprSeq",
-            seq: [{type: "Nil"}]
-        }
+        body: ast.ExprSeq([ast.Nil()])
     };
     assertEquals(smalltalk.parseMethod('foo: bar nil.'), foobar);
     assertEquals(smalltalk.parseMethod('foo:bar nil.'), foobar);
@@ -102,10 +99,7 @@ load("../parse.js");
         type: "Block",
         params: ["i"],
         locals: [],
-        body: {
-            type: "ExprSeq",
-            seq: [{type: "Local", id: "i"}]
-        }
+        body: ast.ExprSeq([ast.Local("i")])
     };
 
     assertEquals(smalltalk.parseExpr("[:i|i]"), simpleBlock);
