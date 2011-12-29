@@ -182,7 +182,8 @@
     }
     RuntimeClassInfo.prototype = {
         hasClass: function hasClass(cls) {
-            return cls in this.runtime.globals;
+            var clsobj = this.runtime.globals[cls];
+            return Object.prototype.isPrototypeOf.call(this.runtime.globals.Class.__im, clsobj);
         },
         getSuperclass: function getSuperclass(cls) {
             var scls = this.runtime.globals[cls].superclass();
