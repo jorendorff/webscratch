@@ -66,10 +66,11 @@
 //     implementation of Object>>basicAt: and so forth use them.
 //
 // Class variables: These are stored just like instance variables of classes:
-//     they are data properties of classes. They can't collide with any actual
-//     instance variables of class Class because class variables start with an
-//     uppercase letter. The 'name' instance variable of a class is cls._name;
-//     if a class has a class variable named 'Name', that's cls._Name.
+//     they are data properties of classes. In practice they do not collide
+//     with actual instance variables of class Class because class variables
+//     start with an uppercase letter. The 'name' instance variable of a class
+//     is cls._name; if a class has a class variable named 'Name', that's
+//     cls._Name.
 //
 // Global variables: These are stored in a JS object, SmalltalkRuntime.globals.
 //     The SystemDictionary object does not yet correctly reflect the real
@@ -765,6 +766,11 @@ var console;
     // Behavior#flushCache.
     primitives[89] = "return __smalltalk.nil;\n";
 
+    // InputSensor>>primGetNextEvent:. Totally bogus implementation.
+    primitives[94] = (
+        "{0}.__array[0] = __smalltalk.Integer(0);\n" +
+        "return this;");
+
     // BitBlt#copyBits. Totally bogus implementation.
     primitives[96] = "return __smalltalk.nil;\n";
 
@@ -1109,13 +1115,20 @@ var console;
         var objs = [];
         for (var i = 0; i < objDescs.length; i++) {
             var desc = objDescs[i];
-            objs[i] = (desc === null ? nil : basicNew(desc[0]));
+            if (desc === null) {
+                objs[i] = nil;
+            } else if (Array.isArray(desc)) {
+                objs[i] = basicNew(desc[0]);
+            } else {
+                assert(Object.prototype.isPrototypeOf.call(globals.Class.__im, desc));
+                objs[i] = desc;
+            }
         }
 
         for (var i = 0; i < objDescs.length; i++) {
             var desc = objDescs[i];
             var obj = objs[i];
-            if (desc !== null) {
+            if (Array.isArray(desc)) {
                 var keys = desc[0].__iv;
                 var values = desc[1];
                 for (var j = 0; j < keys.length; j++) {

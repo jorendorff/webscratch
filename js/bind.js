@@ -18,6 +18,13 @@
                 }
                 if (cvClass !== null)
                     return ast.ClassVar(cvClass, name);
+
+                // No matching instVar or classVar exists. Try pool dictionaries.
+                var pd = classInfo.getPoolDictionaryNames(cls);
+                for (var i = 0; i < pd.length; i++) {
+                    if (classInfo.poolDictionaryHasEntry(pd[i], name))
+                        return ast.PoolVar(pd[i], name);
+                }
                 return ast.Global(name);
             }
             return expr;

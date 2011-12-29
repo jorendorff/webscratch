@@ -638,9 +638,11 @@
                     var cvn = variableNames(args[2].value);
                     check(args[3].type === "String", "8");
                     var pd = args[3].value;
+                    pd = pd.trim();
+                    pd = (pd === "" ? [] : pd.split());
                     check(args[4].type === "String" ,"9");
                     var cat = args[4].value;
-                    var cls = ClassDef(subclassKind, name, superclassName, ivn, cvn, pd, cat);
+                    var cls = smalltalk.ast.ClassDef(subclassKind, name, superclassName, ivn, cvn, pd, cat);
                     classes_ast[name] = cls;
                 }
             } else if (m[3] !== undefined) {
@@ -679,8 +681,8 @@
             } else if (m[6] !== undefined) {
                 // mysterious!
                 if (m[6].match(/^(?:TextConstants|ZipConstants) at: /)) {
-                    // this seems to be unparseable nonsense
-                    // do nothing
+                    // This unparseable gibberish turns up multiple times in the fileOut.
+                    // Fortunately we can recover it from the object graph. Do nothing.
                 } else {
                     parse(m[6].replace(/!!/g, '!'), "expr");
                 }
@@ -689,19 +691,6 @@
             }
         }
 
-        function ClassDef(subclassKind, name, superclassName, ivn, cvn, pd, cat) {
-            return {type: "ClassDef",
-                    subclassKind: subclassKind,
-                    name: name,
-                    superclassName: superclassName,
-                    instanceVariableNames: ivn,
-                    classVariableNames: cvn,
-                    poolDictionaries: pd,
-                    category: cat,
-                    methods: Object.create(null),
-                    classMethods: Object.create(null),
-                    weirdness: []};
-        }
         return classes_ast;
     }
 

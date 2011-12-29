@@ -14,16 +14,24 @@
 //
 // JavaScript names (all of these are local to the JS function we emit):
 //   _k24 (and other integers) - Constants.
+//
 //   __smalltalk, $B, $G - Runtime support.
-//   _SmallInteger, _Array, _Symbol - Class objects.
+//
+//   _SmallInteger, _Array, _Symbol - Class objects or constant pools.
 //          These names always match /^_[A-Z][A-Za-z0-9]*$/.
+//          The ones that are constant pools are JS objects, not Smalltalk
+//          Dictionary objects (for simpler JS code).
+//
 //   abc - Local variables and arguments always match /^[A-Za-z][A-Za-z0-9]*$/.
+//
 //   this_ - Local variables and arguments whose names happen to be JS keywords
 //          (or 'arguments' or 'eval') are given a trailing underscore.  This
 //          can't collide with anything since Smalltalk identifiers can't
 //          contain underscores.
+//
 //   $a - A special name used by compiler-generated code to implement
 //          return-from-block. The "a" is for "answer".
+//
 //   $$k - Variables used in primitives. Since primitives are just pasted into
 //          the compiled code, they need to use variable names that won't
 //          collide with anything else.  These always match
@@ -200,11 +208,21 @@
                 if (subclassKindToFlags[kind] === flags)
                     return kind;
             throw new Error("Unknown class kind: " + cls);
+        },
+        getPoolDictionaryNames: function getPoolDictionaryNames(cls) {
+            assert(cls === "UndefinedObject");
+            return [];
+        },
+        poolDictionaryHasEntry: function poolDictionaryHasEntry(pool, name) {
+            var rt = this.runtime;
+            return rt.globals[pool].includesKey_(rt.Symbol(name)) === rt.true;
         }
     };
 
-    function StaticClassInfo(classes_ast) {
+    function StaticClassInfo(classes_ast, objects_ast) {
         this.classes_ast = classes_ast;
+        this.objectGraph = null; // Must be populated by user before bind phase.
+        this.poolDictionaryCache = Object.create(null);
     }
     StaticClassInfo.prototype = {
         hasClass: function hasClass(cls) {
@@ -232,6 +250,45 @@
         },
         getClassKind: function getClassKind(cls) {
             return this.classes_ast[cls].subclassKind;
+        },
+        getPoolDictionaryNames: function getPoolDictionaryNames(cls) {
+            return this.classes_ast[cls].poolDictionaries;
+        },
+        getPoolDictionaryEntries: function getGlobalDictionaryEntries(name) {
+            var entries = this.poolDictionaryCache[name];
+            if (entries === undefined) {
+                var graph = this.objectGraph;
+                var pool_id = graph.globals[name];
+                assertEq(typeof pool_id, "number");
+                var pool_desc = graph.objects[pool_id];
+                assertEq(pool_desc.type, "Object");
+
+                var fieldOffset = this.getAllInstVarNames(pool_desc.cls).indexOf("array");
+                assert(fieldOffset !== -1);
+                var arr_id = pool_desc.iv[fieldOffset];
+                assertEq(typeof arr_id, "number");
+                var arr_desc = graph.objects[arr_id];
+                assertEq(arr_desc.type, "Object");
+                var table = arr_desc.vld;
+
+                entries = {};
+                for (var i = 0; i < table.length; i++) {
+                    var assoc_id = table[i];
+                    if (typeof assoc_id === "number") {
+                        var assoc_desc = graph.objects[assoc_id];
+                        assertEq(assoc_desc.cls, "Association");
+                        assertEq(assoc_desc.iv.length, 2);
+                        var key = assoc_desc.iv[0];
+                        if (typeof key === "object" && key.type === "Symbol")
+                            entries[key.value] = assoc_desc.iv[1];
+                    }
+                }
+                this.poolDictionaryCache[name] = entries;
+            }
+            return entries;
+        },
+        poolDictionaryHasEntry: function poolDictionaryHasEntry(pool, name) {
+            return name in this.getPoolDictionaryEntries(pool);
         }
     };
 
@@ -245,6 +302,7 @@
             this.inlineable = inlineableMethods(classInfo.classes_ast);
         else
             this.inlineable = Object.create(null);
+        this.allPoolDictionaries = {};
 
         // Support for Smalltalk constants
         this.constantDecls = [];
@@ -355,10 +413,12 @@
             }
         },
 
-        translateObjectGraph: function translateObjectGraph(ast) {
+        translateObjectGraph: function translateObjectGraph() {
             var comp = this;
 
             function translateValue(node) {
+                if (typeof node === "number")
+                    return "" + node;
                 switch (node.type) {
                 case "Identifier":
                     if (node.id === "NegativeInfinity")
@@ -375,135 +435,57 @@
                 case "Character": case "String": case "Symbol":
                     return comp.translateConstant(node);
 
-                case "MessageExpr":
-                    assertEq(node.receiver.id, "U");
-                    assertEq(node.message.selector, "at:");
-                    assertEq(node.message.args[0].type, "Integer");
-                    return "" + (node.message.args[0].value - 1);
-
                 default:
                     throw new Error("unrecognized value in object graph");
                 }
             }
 
-            assertEq(ast.type, "MethodDefinition");
-            var stmts = ast.body.seq;
-            assertEq(stmts.length, 2);
-
-            var xexpr = stmts[0];
-            assertEq(xexpr.type, "AssignExpr");
-            assertEq(xexpr.left.type, "Identifier");
-            assertEq(xexpr.left.id, "X");
-            assertEq(xexpr.right.type, "ArrayExpr");
-            var refDescs = xexpr.right.elements;
-
-            var refCode = [], n = 0;
-            for (var i = 0; i < refDescs.length; i++) {
-                var refDescArr = refDescs[i].elements;
-                assertEq(refDescArr.length, 3);
-                assertEq(refDescArr[0].type, "Identifier");
-                var objid = refDescArr[0].id;
-                assertEq(refDescArr[1].type, "Symbol");
-                var key = refDescArr[1].value;
-                var val = translateValue(refDescArr[2]);
-
-                var objCode;
-                if (objid === "Smalltalk") {
-                    objCode = "'S'";
-                } else {
-                    if (!comp.classInfo.hasClass(objid))
-                        continue;
-                    objCode = "_" + objid;
-                }
-                refCode[n++] = "[" + objCode + ", '" + key + "', " + val + "]";
-            }
-
-            var uexpr = stmts[1];
-            assertEq(uexpr.type, "AssignExpr");
-            assertEq(uexpr.left.type, "Identifier");
-            assertEq(uexpr.left.id, "U");
-            assertEq(uexpr.right.type, "ArrayExpr");
-            var objectDescs = uexpr.right.elements;
+            var graph = comp.classInfo.objectGraph;
 
             var objectCode = [];
-            for (var i = 0; i < objectDescs.length; i++) {
-                var s = '[';
-                var objDescArr = objectDescs[i].elements;
-                assert(objDescArr.length === 2 || objDescArr.length === 3);
-
-                // Translate the class of the object.
-                // cls will be the name of the class, if any; and null
-                // if the class is a metaclass.
-                var cls;
-                var classId = objDescArr[0];
-                var found;
-                if (classId.type === "Identifier") {
-                    cls = classId.id;
-                    found = comp.classInfo.hasClass(cls);
-                    s += '_' + cls;
-                } else if (classId.type === "MessageExpr") {
-                    assertEq(classId.receiver.type, "Identifier");
-                    assertEq(classId.message.selector, "class");
-                    cls = null;
-                    found = comp.classInfo.hasClass(classId.receiver.id);
-                    s += '_' + classId.receiver.id + '.__class';
-                } else {
-                    throw new Error("unrecognized class in object graph");
-                }
-                if (!found) {
-                    // This object is of a class that isn't in the source file.
-                    // This happens when loading the Scratch object dump with
-                    // the handmade-test.st source file.
+            for (var i = 0; i < graph.objects.length; i++) {
+                var obj = graph.objects[i];
+                if (obj === null) {
                     objectCode[i] = "null";
-                    continue;
-                }
+                } else if (obj.type === "Class") {
+                    objectCode[i] = "_" + obj.name;
+                } else {
+                    assertEq(obj.type, "Object");
+                    var s = "[_" + obj.cls + ", [" + obj.iv.map(translateValue).join(", ") + "]";
 
-                // Translate instance variable values.
-                var ivValues = objDescArr[1];
-                if (classId.type === "Identifier") {
-                    var ivNames = comp.classInfo.getAllInstVarNames(classId.id);
-                    assertEq(ivValues.elements.length, ivNames.length,
-                             "expected " + ivNames.length + " fields in " + classId.id + ": " +
-                             ivNames.join(", "));
-                }
-                s += ", [" + ivValues.elements.map(translateValue).join(", ") + "]";
-
-                // Translate variable-length data, if any.
-                if (objDescArr.length >= 3) {
-                    var vld = objDescArr[2];
-
-                    if (cls !== null && comp.classInfo.getClassKind(cls) === "variableByteSubclass") {
-                        // Binary data.
-                        var octet = function (n) {
-                            assertEq(n.type, "Integer");
-                            assert(n.value >= 0 && n.value < 256);
-                            return (256 + n.value).toString(16).substring(1);
-                        };
-                        s += ", '" + vld.elements.map(octet).join("") + "'";
-                    } else if (cls != null && comp.classInfo.getClassKind(cls) === "variableWordSubclass") {
-                        // Word-sized binary data.
-                        var word = function (n) {
-                            var v;
-                            if (n.type === "Integer") {
-                                v = n.value;
-                            } else {
-                                assertEq(n.type, "LargeInteger");
-                                v = parseInt(n.value, 16);
-                            }
-                            assert(v >= 0 && v <= 0xffffffff);
-                            return (0x100000000 + v).toString(16).substring(1);
-                        };
-                        s += ", '" + vld.elements.map(word).join("") + "'";
-                    } else {
-                        s += ", [" + vld.elements.map(translateValue).join(", ") + "]";
+                    // Translate variable-length data, if any.
+                    var vld = obj.vld;
+                    if (vld !== null) {
+                        if (typeof vld === "string") {
+                            // Binary data.
+                            s += ", '" + vld + "'";
+                        } else {
+                            s += ", [" + vld.map(translateValue).join(", ") + "]";
+                        }
                     }
+                    s += "]";
+
+                    objectCode[i] = s;
                 }
-                s += ']';
-                objectCode[i] = s;
             }
 
-            return ("__smalltalk.initObjectGraph([\n" + objectCode.join(",\n") + "\n], [\n" +
-                    refCode.join(",\n") + "\n]);\n");
+            var refCode = [];
+            for (var key in graph.globals) {
+                var val = translateValue(graph.globals[key]);
+                refCode.push("[\"S\", " + JSON.stringify(key) + ", " + val + "]");
+            }
+            for (var clsName in graph.classVars) {
+                var cls = graph.classVars[clsName];
+                for (var key in cls) {
+                    var val = translateValue(cls[key]);
+                    refCode.push("[_" + clsName + ", " + JSON.stringify(key) + ", " + val + "]");
+                }
+            }
+
+            return ("__smalltalk.initObjectGraph(" +
+                    "[\n        " + objectCode.join(",\n        ") + "\n    ], " +
+                    "[\n        " + refCode.join(",\n        ") + "\n    ]" +
+                    ");\n");
         },
 
         translateMethod: function translateMethod(className, n, isInstanceMethod) {
@@ -545,6 +527,7 @@
                 case "Local":
                 case "InstVar":
                 case "ClassVar":
+                case "PoolVar":
                 case "Global":
                 case "Character":
                 case "String":
@@ -719,12 +702,17 @@
                 case "ClassVar":
                     return "_" + n.className + "._" + n.id;
 
+                case "PoolVar":
+                    comp.allPoolDictionaries[n.poolName] = true;
+                    return "_" + n.poolName + "." + n.id;
+
                 case "Global":
-                    if (!comp.classInfo.hasClass(n.id)) {
-                        if (comp.unknownNames.indexOf(n.id) === -1) {
-                            comp.unknownNames.push(n.id);
-                            console.warn("unknown name: " + n.id);
-                        }
+                    if (comp.classInfo.hasClass(n.id))
+                        return "_" + n.id;
+
+                    if (comp.unknownNames.indexOf(n.id) === -1) {
+                        comp.unknownNames.push(n.id);
+                        console.warn("unknown name: " + n.id);
                     }
                     comp.requiresGlobal = true;
                     return "$G." + n.id;
@@ -873,10 +861,10 @@
                     {
                         var lhs = translateExpr(n.left, POSTFIX_PREC, "");
                         var rhs = translateExpr(n.right, ASSIGN_PREC, indent + "    ");
-                        if (prec <= ASSIGN_PREC)
-                            return lhs + " = " + rhs;
-                        else
-                            return "(" + lhs + " = " + rhs + ")";
+                        var s = lhs + " = " + rhs;
+                        if (prec > ASSIGN_PREC)
+                            s = "(" + s + ")";
+                        return s;
                     }
 
                 default:
@@ -958,6 +946,26 @@
             return s;
         },
 
+        translatePoolDictionaries: function translatePoolDictionaries() {
+            // Emit more code for pool dictionaries.
+            var code = "\n";
+            for (var pool in this.allPoolDictionaries) {
+                var entries = this.classInfo.getPoolDictionaryEntries(pool);
+                var entries_code = [];
+                for (var name in entries) {
+                    if (/^[A-Za-z][0-9A-Za-z]*$/.test(name)) {
+                        var desc = entries[name];
+                        if (typeof desc === "object")
+                            entries_code.push(name + ": " + this.translateConstant(desc));
+                    }
+                }
+                code += ("    var _" + pool + " = {\n        " +
+                         entries_code.join(",\n        ") +
+                         "\n    };\n");
+            }
+            return code;
+        },
+
         wrapOutput: function wrapOutput(code) {
             return ("(function (__smalltalk) {\n" +
                     "    var $B = __smalltalk.Block;\n" +
@@ -968,8 +976,145 @@
         }
     };
 
+    function simplifyObjectGraph(classInfo, objects_ast) {
+        function simplifyValue(node) {
+            if (node.type === "MessageExpr") {
+                assertEq(node.receiver.id, "U");
+                assertEq(node.message.selector, "at:");
+                assertEq(node.message.args[0].type, "Integer");
+                return node.message.args[0].value - 1;
+            } else {
+                return node;
+            }
+        }
+
+        assertEq(objects_ast.type, "MethodDefinition");
+        var stmts = objects_ast.body.seq;
+        assertEq(stmts.length, 2);
+
+        var xexpr = stmts[0];
+        assertEq(xexpr.type, "AssignExpr");
+        assertEq(xexpr.left.type, "Identifier");
+        assertEq(xexpr.left.id, "X");
+        assertEq(xexpr.right.type, "ArrayExpr");
+        var refDescs = xexpr.right.elements;
+
+        var uexpr = stmts[1];
+        assertEq(uexpr.type, "AssignExpr");
+        assertEq(uexpr.left.type, "Identifier");
+        assertEq(uexpr.left.id, "U");
+        assertEq(uexpr.right.type, "ArrayExpr");
+        var objectDescs = uexpr.right.elements;
+
+        var objects = [];
+        for (var i = 0; i < objectDescs.length; i++) {
+            var objDescArr = objectDescs[i].elements;
+            assert(objDescArr.length === 2 || objDescArr.length === 3);
+
+            // Translate the class of the object.
+            // cls will be the name of the class, if any; and null
+            // if the class is a metaclass.
+            var cls;
+            var classId = objDescArr[0];
+            var found;
+            if (classId.type === "Identifier") {
+                cls = classId.id;
+                found = classInfo.hasClass(cls);
+            } else if (classId.type === "MessageExpr") {
+                assertEq(classId.receiver.type, "Identifier");
+                assertEq(classId.message.selector, "class");
+                found = classInfo.hasClass(classId.receiver.id);
+                if (found) {
+                    objects[i] = {type: "Class", name: classId.receiver.id};
+                    continue;
+                }
+            } else {
+                throw new Error("unrecognized class in object graph");
+            }
+            if (!found) {
+                // This object is of a class that isn't in the source file.
+                // This happens when loading the Scratch object dump with
+                // the handmade-test.st source file.
+                objects[i] = null;
+                continue;
+            }
+
+            // Translate instance variable values.
+            var ivValues = objDescArr[1];
+            var ivNames = classInfo.getAllInstVarNames(classId.id);
+            assertEq(ivValues.elements.length, ivNames.length,
+                     "expected " + ivNames.length + " fields in " + classId.id + ": " +
+                     ivNames.join(", "));
+            var iv = ivValues.elements.map(simplifyValue);
+
+            // Translate variable-length data, if any.
+            var vld = null;
+            if (objDescArr.length >= 3) {
+                vld = objDescArr[2];
+
+                if (cls !== null && classInfo.getClassKind(cls) === "variableByteSubclass") {
+                    // Binary data.
+                    var octet = function (n) {
+                        assertEq(n.type, "Integer");
+                        assert(n.value >= 0 && n.value < 256);
+                        return (256 + n.value).toString(16).substring(1);
+                    };
+                    vld = vld.elements.map(octet).join("");
+                } else if (cls != null && classInfo.getClassKind(cls) === "variableWordSubclass") {
+                    // Word-sized binary data.
+                    var word = function (n) {
+                        var v;
+                        if (n.type === "Integer") {
+                            v = n.value;
+                        } else {
+                            assertEq(n.type, "LargeInteger");
+                            v = parseInt(n.value, 16);
+                        }
+                        assert(v >= 0 && v <= 0xffffffff);
+                        return (0x100000000 + v).toString(16).substring(1);
+                    };
+                    vld = vld.elements.map(word).join("");
+                } else {
+                    // Ordinary variable-length data.
+                    vld = vld.elements.map(simplifyValue);
+                }
+            }
+
+            objects[i] = {type: "Object", cls: cls, iv: iv, vld: vld};
+        }
+
+        var nil = smalltalk.ast.Nil();
+
+        var globals = Object.create(null);
+        var classVars = Object.create(null);
+        for (var i = 0; i < refDescs.length; i++) {
+            var refDescArr = refDescs[i].elements;
+            assertEq(refDescArr.length, 3);
+            assertEq(refDescArr[0].type, "Identifier");
+            var objid = refDescArr[0].id;
+            assertEq(refDescArr[1].type, "Symbol");
+            var key = refDescArr[1].value;
+            var val = simplifyValue(refDescArr[2]);
+
+            if (objid === "Smalltalk") {
+                assert(!(key in globals));
+                globals[key] = val;
+            } else if (classInfo.hasClass(objid)) {
+                var cls = classVars[objid];
+                if (cls === undefined)
+                    cls = classVars[objid] = {};
+                assert(!(key in cls));
+                cls[key] = val;
+            }
+        }
+
+        return {objects: objects, globals: globals, classVars: classVars};
+    }
+
     function compileImage(classes_ast, objects_ast) {
         var c = new Compilation(new StaticClassInfo(classes_ast));
+
+        c.classInfo.objectGraph = simplifyObjectGraph(c.classInfo, objects_ast);
 
         // Bind phase.
         smalltalk.bindNames(c.classInfo, classes_ast);
@@ -999,12 +1144,14 @@
         for (var name in classdefs)
             write(name);
 
-        // Compile the object graph.
-        var classinit_code = c.translateObjectGraph(objects_ast);
+        // Compile the object graph and pool dictionaries.
+        var classinit_code = c.translateObjectGraph();
+        var pd_code = c.translatePoolDictionaries();
 
         return c.wrapOutput(classdef_code.join("") +
                             "\n" +
-                            classinit_code);
+                            classinit_code +
+                            pd_code);
     }
 
     function compileMethodLive(runtime, ast) {

@@ -162,9 +162,10 @@ var smalltalk;
 
         Identifier: function Identifier(id) { return {type: "Identifier", id: id}; },
         Local: function Local(id) { return {type: "Local", id: id}; },
-        Global: function Global(id) { return {type: "Global", id: id}; },
         InstVar: function InstVar(obj, id) { return {type: "InstVar", obj: obj, id: id}; },
         ClassVar: function ClassVar(className, id) { return {type: "ClassVar", className: className, id: id}; },
+        PoolVar: function PoolVar(poolName, id) { return {type: "PoolVar", poolName: poolName, id: id}; },
+        Global: function Global(id) { return {type: "Global", id: id}; },
 
         Message: function Message(selector, args) { return {type: "Message", selector: selector, args: args}; },
         MessageExpr: function MessageExpr(rec, msg) { return {type: "MessageExpr", receiver: rec, message: msg}; },
@@ -178,8 +179,22 @@ var smalltalk;
             return {type: "Block", params: params, locals: locals, body: body};
         },
         ExprSeq: function ExprSeq(seq) { return {type: "ExprSeq", seq: seq}; },
+
         MethodDefinition: function MethodDefinition(selector, args, locals, body) {
             return {type: "MethodDefinition", selector: selector, args: args, locals: locals, body: body};
+        },
+        ClassDef: function ClassDef(subclassKind, name, superclassName, ivn, cvn, pd, cat) {
+            return {type: "ClassDef",
+                    subclassKind: subclassKind,
+                    name: name,
+                    superclassName: superclassName,
+                    instanceVariableNames: ivn,
+                    classVariableNames: cvn,
+                    poolDictionaries: pd,
+                    category: cat,
+                    methods: Object.create(null),
+                    classMethods: Object.create(null),
+                    weirdness: []};
         },
 
         callGraph: callGraph,
