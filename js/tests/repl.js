@@ -22,17 +22,27 @@
     function repl() {
         var buf = '', line;
         while ((line = readline("smalltalk> ")) !== null) {
+            var js = false;
             if (line !== '') {
-                buf += line + '\n';
-                continue;
+                if (buf === '' && /^:js\b/.test(line)) {
+                    buf = line.substring(3);
+                    js = true;
+                } else {
+                    buf += line + '\n';
+                    continue;
+                }
             }
             try {
                 // Clear buf before risking any exception, so that on error the
                 // user gets to start with a fresh buffer.
                 var code = buf;
                 buf = '';
-                var val = smalltalk_eval(code);
-                print(val.printString().__str);
+                if (js) {
+                    print(uneval((0, eval)(code)));
+                } else {
+                    var val = smalltalk_eval(code);
+                    print(val.printString().__str);
+                }
             } catch (exc) {
                 print("*** " + exc.name + ": " + exc.message);
                 if (exc.stack)
