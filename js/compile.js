@@ -181,9 +181,15 @@
         this.runtime = runtime;
     }
     RuntimeClassInfo.prototype = {
+        hasGlobal: function hasGlobal(name) {
+            return name in this.runtime.globals;
+        },
         hasClass: function hasClass(cls) {
             var clsobj = this.runtime.globals[cls];
             return Object.prototype.isPrototypeOf.call(this.runtime.globals.Class.__im, clsobj);
+        },
+        isDefiningClass: function isDefiningClass(cls) {
+            return false;
         },
         getSuperclass: function getSuperclass(cls) {
             var scls = this.runtime.globals[cls].superclass();
@@ -226,8 +232,14 @@
         this.poolDictionaryCache = Object.create(null);
     }
     StaticClassInfo.prototype = {
+        hasGlobal: function hasGlobal(name) {
+            return this.hasClass(name) || name in this.objectGraph.globals;
+        },
         hasClass: function hasClass(cls) {
             return cls in this.classes_ast;
+        },
+        isDefiningClass: function isDefiningClass(cls) {
+            return this.hasClass(cls);
         },
         getSuperclass: function getSuperclass(cls) {
             return this.classes_ast[cls].superclassName;
@@ -708,12 +720,14 @@
                     return "_" + n.poolName + "." + n.id;
 
                 case "Global":
-                    if (comp.classInfo.hasClass(n.id))
+                    if (comp.classInfo.isDefiningClass(n.id))
                         return "_" + n.id;
 
-                    if (comp.unknownNames.indexOf(n.id) === -1) {
-                        comp.unknownNames.push(n.id);
-                        console.warn("unknown name: " + n.id);
+                    if (!comp.classInfo.hasGlobal(n.id)) {
+                        if (comp.unknownNames.indexOf(n.id) === -1) {
+                            comp.unknownNames.push(n.id);
+                            console.warn("unknown name: " + n.id);
+                        }
                     }
                     comp.requiresGlobal = true;
                     return "$G." + n.id;
