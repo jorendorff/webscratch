@@ -272,7 +272,7 @@ var console;
             obj.__array = new Uint32Array(toJSNaturalNumber(size));
             break;
         case 4: case 6:
-            if (cls === globals.String || Object.prototype.isPrototypeOf(globals.String.__im, cls.__im))
+            if (cls === globals.String || Object.prototype.isPrototypeOf.call(globals.String.__im, cls.__im))
                 obj.__str = Array(toJSNaturalNumber(size) + 1).join("\0");
             else
                 obj.__array = new Uint8Array(toJSNaturalNumber(size));
@@ -779,7 +779,10 @@ var console;
 
     // Object#perform:withArguments:inSuperclass:.
     primitives[100] = (
-        "return {2}.__im[{0}.__str.replace(/:/g, '_')].apply(this, {1}.__array);\n");
+        "var $$s = {0}.__str.replace(/:/g, '_');\n" +
+        "if (typeof {2}.__im[$$s] !== 'function')\n" +
+        "    throw new Error('No method ' + {0}.__str + ' in class ' + {2}._name.__str)\n" +
+        "return {2}.__im[$$s].apply(this, {1}.__array);\n");
 
     // Object#==.
     primitives[110] = (
