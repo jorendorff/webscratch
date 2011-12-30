@@ -1111,7 +1111,7 @@ var console;
 
     // === Runtime initialization
 
-    function initObjectGraph(objDescs, refs) {
+    function initObjectGraph(objDescs) {
         var objs = [];
         for (var i = 0; i < objDescs.length; i++) {
             var desc = objDescs[i];
@@ -1172,18 +1172,7 @@ var console;
                 }
             }
         }
-
-        for (var i = 0; i < refs.length; i++) {
-            var desc = refs[i];
-            var v = desc[2];
-            if (typeof v === "number")
-                v = objs[v];
-
-            if (desc[0] === "S")
-                globals[desc[1]] = v;
-            else
-                desc[0]["_" + desc[1]] = v;
-        }
+        return objs;
     }
 
     // --- Other system functions

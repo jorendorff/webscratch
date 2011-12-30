@@ -482,23 +482,28 @@
                 }
             }
 
+            function attr(key) {
+                return /^[A-Za-z_$][0-9A-Za-z$]*$/.test(key) ? "." + key : "[" + JSON.stringify(key) + "]";
+            }
+            function valCode(val) {
+                return typeof val === "number" ? "$H[" + val + "]" : translateValue(val);
+            }
             var refCode = [];
             for (var key in graph.globals) {
-                var val = translateValue(graph.globals[key]);
-                refCode.push("[\"S\", " + JSON.stringify(key) + ", " + val + "]");
+                var val = graph.globals[key];
+                refCode.push("    $G" + attr(key) + " = " + valCode(val) + ";\n");
             }
             for (var clsName in graph.classVars) {
                 var cls = graph.classVars[clsName];
                 for (var key in cls) {
-                    var val = translateValue(cls[key]);
-                    refCode.push("[_" + clsName + ", " + JSON.stringify(key) + ", " + val + "]");
+                    var val = cls[key];
+                    refCode.push("    _" + clsName + attr("_" + key) + " = " + valCode(val) + ";\n");
                 }
             }
 
-            return ("$R.initObjectGraph(" +
-                    "[\n        " + objectCode.join(",\n        ") + "\n    ], " +
-                    "[\n        " + refCode.join(",\n        ") + "\n    ]" +
-                    ");\n");
+            return ("var $H = $R.initObjectGraph(" +
+                    "[\n        " + objectCode.join(",\n        ") + "\n    ]);\n" +
+                    refCode.join(""));
         },
 
         translateMethod: function translateMethod(className, n, isInstanceMethod) {
