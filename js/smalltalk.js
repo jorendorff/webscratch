@@ -555,11 +555,6 @@ var console;
         return obj;
     }
 
-    function numOp(op) {
-        return ("if ({0}.__class === _SmallInteger)\n" +
-                "    return __smalltalk.Integer(this.__value " + op + " {0}.__value);\n");
-    }
-
     function isSmall(v) {
         var cls = v.__class;
         if (cls === globals.SmallInteger)
@@ -586,22 +581,19 @@ var console;
         return cls === globals.LargePositiveInteger ? b : -b;
     }
 
-    function bitOp(op) {
-        return ("if (__smalltalk.isSmall(this) && __smalltalk.isSmall({0}))\n" +
-                "    return __smalltalk.Integer(__smalltalk.smallValue(this) " + op +
-                " __smalltalk.smallValue({0}));\n");
-    }
-
-    function cmpOp(op) {
-        return ("if ({0}.__class === _SmallInteger)\n" +
-                "    return this.__value " + op + " {0}.__value ? __smalltalk.true : __smalltalk.false;\n");
-    }
-
     // SmallInteger#+ and #-.
+    function numOp(op) {
+        return ("if ({0}.__class === _SmallInteger)\n" +
+                "    return __smalltalk.Integer(this.__value " + op + " {0}.__value);\n");
+    }
     primitives[1] = numOp("+");
     primitives[2] = numOp("-");
 
     // SmallInteger#<, #>, #<=, #>=, #=, and #~=.
+    function cmpOp(op) {
+        return ("if ({0}.__class === _SmallInteger)\n" +
+                "    return this.__value " + op + " {0}.__value ? __smalltalk.true : __smalltalk.false;\n");
+    }
     primitives[3] = cmpOp("<");
     primitives[4] = cmpOp(">");
     primitives[5] = cmpOp("<=");
@@ -628,6 +620,11 @@ var console;
         "    return __smalltalk.Integer(Math.floor(this.__value / {0}.__value));\n");
 
     // SmallInteger#bitAnd:, #bitOr:, and #bitXor:.
+    function bitOp(op) {
+        return ("if (__smalltalk.isSmall(this) && __smalltalk.isSmall({0}))\n" +
+                "    return __smalltalk.Integer(__smalltalk.smallValue(this) " + op +
+                " __smalltalk.smallValue({0}));\n");
+    }
     primitives[14] = bitOp("&");
     primitives[15] = bitOp("|");
     primitives[16] = bitOp("^");
