@@ -6,8 +6,8 @@ ScratchSourceCode1.4.image.  Unfortunately (and astoundingly) there
 doesn't seem to be any obvious way to automate this.
 
 Here is how to do it by hand on Mac; something very similar will work for
-Linux and Windows.  This process creates a single file,
-build/sources/ScratchSource1.4/ScratchSources.st.
+Linux and Windows.  This process creates two files,
+build/sources/ScratchSource1.4/ScratchSources.st and objectdump.txt.
 
   - Download Scratch from <http://info.scratch.mit.edu/Scratch_1.4_Download>
     and install it.  You are doing this to get a working Squeak VM that can

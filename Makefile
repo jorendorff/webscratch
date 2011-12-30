@@ -10,7 +10,7 @@ PYTHON ?= python
 SQUEAK ?= /Applications/Scratch 1.4/Scratch.app/Contents/MacOS/Scratch
 
 ANY_SCRATCH_PLUGIN_SRC_FILE = $(BUILD_DIR)/sources/ScratchPluginSrc1.4/CameraPlugin-linux/build.sh
-ANY_SCRATCH_SOURCE_FILE = $(BUILD_DIR)/sources/ScratchSource1.4/License.txt
+ANY_SCRATCH_SOURCE_FILE = $(BUILD_DIR)/sources/ScratchSource1.4/ScratchSourceCode1.4.image
 ANY_SCRATCH_SKIN_FILE = $(BUILD_DIR)/sources/ScratchSkin/pen.gif
 
 CLASSES_RAW = $(BUILD_DIR)/sources/ScratchSource1.4/ScratchSources.st
@@ -37,16 +37,19 @@ $(ANY_SCRATCH_PLUGIN_SRC_FILE): original-sources/ScratchPluginSrc1.4.zip
 	mkdir -p $(BUILD_DIR)/sources
 	cd $(BUILD_DIR)/sources && rm -rf ScratchPluginSrc1.4
 	cd $(BUILD_DIR)/sources && unzip ../../original-sources/ScratchPluginSrc1.4.zip
+	touch $@
 
 $(ANY_SCRATCH_SOURCE_FILE): original-sources/ScratchSource1.4.zip
 	mkdir -p $(BUILD_DIR)/sources
 	cd $(BUILD_DIR)/sources && rm -rf ScratchSource1.4
 	cd $(BUILD_DIR)/sources && unzip ../../original-sources/ScratchSource1.4.zip
+	touch $@
 
 $(ANY_SCRATCH_SKIN_FILE): original-sources/ScratchSkin1.4.zip
 	mkdir -p $(BUILD_DIR)/sources
 	cd $(BUILD_DIR)/sources && rm -rf ScratchSkin
 	cd $(BUILD_DIR)/sources && unzip ../../original-sources/ScratchSkin1.4.zip
+	touch $@
 
 $(CLASSES_RAW) $(HEAP_RAW): $(ANY_SCRATCH_SOURCE_FILE)
 	@if [ "$(GO)" == "" ]; then \
