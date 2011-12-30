@@ -584,7 +584,7 @@ var console;
     // SmallInteger#+ and #-.
     function numOp(op) {
         return ("if ({0}.__class === _SmallInteger)\n" +
-                "    return __smalltalk.Integer(this.__value " + op + " {0}.__value);\n");
+                "    return $R.Integer(this.__value " + op + " {0}.__value);\n");
     }
     primitives[1] = numOp("+");
     primitives[2] = numOp("-");
@@ -592,7 +592,7 @@ var console;
     // SmallInteger#<, #>, #<=, #>=, #=, and #~=.
     function cmpOp(op) {
         return ("if ({0}.__class === _SmallInteger)\n" +
-                "    return this.__value " + op + " {0}.__value ? __smalltalk.true : __smalltalk.false;\n");
+                "    return this.__value " + op + " {0}.__value ? $R.true : $R.false;\n");
     }
     primitives[3] = cmpOp("<");
     primitives[4] = cmpOp(">");
@@ -611,19 +611,19 @@ var console;
         "if ({0}.__class === _SmallInteger) {\n" +
         "    var $$r = this.__value * {0}.__value;\n" +
         "    if (-0x80000000 <= $$r && $$r <= 0x7fffffff)\n" +
-        "        return __smalltalk.Integer($$r);\n" +
+        "        return $R.Integer($$r);\n" +
         "}\n");
 
     // SmallInteger#//
     primitives[12] = (
         "if ({0}.__class === _SmallInteger) {" +
-        "    return __smalltalk.Integer(Math.floor(this.__value / {0}.__value));\n");
+        "    return $R.Integer(Math.floor(this.__value / {0}.__value));\n");
 
     // SmallInteger#bitAnd:, #bitOr:, and #bitXor:.
     function bitOp(op) {
-        return ("if (__smalltalk.isSmall(this) && __smalltalk.isSmall({0}))\n" +
-                "    return __smalltalk.Integer(__smalltalk.smallValue(this) " + op +
-                " __smalltalk.smallValue({0}));\n");
+        return ("if ($R.isSmall(this) && $R.isSmall({0}))\n" +
+                "    return $R.Integer($R.smallValue(this) " + op +
+                " $R.smallValue({0}));\n");
     }
     primitives[14] = bitOp("&");
     primitives[15] = bitOp("|");
@@ -631,8 +631,8 @@ var console;
 
     // SmallInteger#bitShift:
     primitives[17] = (
-        "if (__smalltalk.isSmall(this) && __smalltalk.isSmall({0})) {\n" +
-        "    var $$b = __smalltalk.smallValue(this), $$k = __smalltalk.smallValue({0});\n" +
+        "if ($R.isSmall(this) && $R.isSmall({0})) {\n" +
+        "    var $$b = $R.smallValue(this), $$k = $R.smallValue({0});\n" +
         "    if ($$k === 0) {\n" +
         "        return this;\n" +
         "    } else if ($$k > 0) {\n" +
@@ -641,63 +641,63 @@ var console;
         // shifted left into the sign bit (or past it, off the end of the
         // integer.)
         "        if ((($$b << $$k) >> $$k) === $$b)\n" +
-        "            return __smalltalk.Integer($$b << $$k);\n" +
+        "            return $R.Integer($$b << $$k);\n" +
         "    } else if ($$k > -32) {\n" +
-        "        return __smalltalk.Integer($$b >> -$$k);\n" +
+        "        return $R.Integer($$b >> -$$k);\n" +
         "    }\n" +
         "}\n");
 
     // SmallInteger#asFloat
-    primitives[40] = "return __smalltalk.Float(this.__value);\n";
+    primitives[40] = "return $R.Float(this.__value);\n";
 
     // Float#+ and #-.
     primitives[41] = (
         "if ({0}.__class === _Float)\n" +
-        "    return __smalltalk.Float(this.__value + {0}.__value);\n");
+        "    return $R.Float(this.__value + {0}.__value);\n");
     primitives[42] = (
         "if ({0}.__class === _Float)\n" +
-        "    return __smalltalk.Float(this.__value - {0}.__value);\n");
+        "    return $R.Float(this.__value - {0}.__value);\n");
 
     // Float#<, #>, #<=, #>=, #=, #~=.
     primitives[43] = (
         "if ({0}.__class === _Float)\n" +
-        "    return this.__value < {0}.__value ? __smalltalk.true : __smalltalk.false;\n");
+        "    return this.__value < {0}.__value ? $R.true : $R.false;\n");
     primitives[44] = (
         "if ({0}.__class === _Float)\n" +
-        "    return this.__value > {0}.__value ? __smalltalk.true : __smalltalk.false;\n");
+        "    return this.__value > {0}.__value ? $R.true : $R.false;\n");
     primitives[45] = (
         "if ({0}.__class === _Float)\n" +
-        "    return this.__value <= {0}.__value ? __smalltalk.true : __smalltalk.false;\n");
+        "    return this.__value <= {0}.__value ? $R.true : $R.false;\n");
     primitives[46] = (
         "if ({0}.__class === _Float)\n" +
-        "    return this.__value >= {0}.__value ? __smalltalk.true : __smalltalk.false;\n");
+        "    return this.__value >= {0}.__value ? $R.true : $R.false;\n");
     primitives[47] = (
         "if ({0}.__class === _Float)\n" +
-        "    return this.__value === {0}.__value ? __smalltalk.true : __smalltalk.false;\n");
+        "    return this.__value === {0}.__value ? $R.true : $R.false;\n");
     primitives[48] = (
         "if ({0}.__class === _Float)\n" +
-        "    return this.__value !== {0}.__value ? __smalltalk.true : __smalltalk.false;\n");
+        "    return this.__value !== {0}.__value ? $R.true : $R.false;\n");
 
     // Float#* and #/.
     primitives[49] = (
         "if ({0}.__class === _Float)\n" +
-        "    return __smalltalk.Float(this.__value * {0}.__value);\n");
+        "    return $R.Float(this.__value * {0}.__value);\n");
     primitives[50] = (
         "if ({0}.__class === _Float && {0}.__value !== 0)\n" +
-        "    return __smalltalk.Float(this.__value / {0}.__value);\n");
+        "    return $R.Float(this.__value / {0}.__value);\n");
 
     // Float#truncated
     // JS has Math.{floor,ceil,round}, none of which just truncates the fractional part.
     // But the built-in ToInt32 primitive does, and we can get that by doing 'f | 0'.
     primitives[51] = (
         "if (-0x80000000 <= this.__value && this.__value <= 0xffffffff)\n" +
-        "    return __smalltalk.Integer(this.__value | 0);\n");
+        "    return $R.Integer(this.__value | 0);\n");
 
     // Object#at:, Object#basicAt:, LargePositiveInteger#digitAt:, String#byteAt:.
     primitives[60] = (
-        "var $$a = this.__array, $$i = __smalltalk.toJSIndex({0}), $$v = $$a[$$i];\n" +
+        "var $$a = this.__array, $$i = $R.toJSIndex({0}), $$v = $$a[$$i];\n" +
         "if ($$i >= 0 && $$i < $$a.length)\n" +
-        "    return ($$a instanceof Array) ? $$v : __smalltalk.Integer($$v);\n");
+        "    return ($$a instanceof Array) ? $$v : $R.Integer($$v);\n");
 
     // Object#at:put:, Object#basicAt:put:, LargePositiveInteger#digitAt:put:
     // (This primitive is also used for String#byteAt:put:, but it always
@@ -705,33 +705,33 @@ var console;
     primitives[61] = (
         "var $$a = this.__array;\n" +
         "if ($$a) {\n" +
-        "    var $$i = __smalltalk.toJSIndex({0});\n" +
+        "    var $$i = $R.toJSIndex({0});\n" +
         "    if ($$i >= 0 && $$i < $$a.length) {\n" +
-        "        $$a[$$i] = ($$a instanceof Array ? {1} : __smalltalk.toJSNaturalNumber({1}));\n" +
+        "        $$a[$$i] = ($$a instanceof Array ? {1} : $R.toJSNaturalNumber({1}));\n" +
         "        return {1};\n" +
         "    }\n" +
         "}\n");
 
     // Object#size, Object#basicSize, LargePositiveInteger#digitLength.
-    primitives[62] = "return __smalltalk.Integer(this.__array.length);\n";
+    primitives[62] = "return $R.Integer(this.__array.length);\n";
 
     // String#at: and String#at:put:.
     primitives[63] = (
-        "return __smalltalk.chars[this.__str.charCodeAt(__smalltalk.toJSIndex({0}))];\n");
+        "return $R.chars[this.__str.charCodeAt($R.toJSIndex({0}))];\n");
     primitives[64] = (
-        "return __smalltalk.String_at_put_(this, {0}, {1});\n");
+        "return $R.String_at_put_(this, {0}, {1});\n");
 
     // CompiledMethod#objectAt: and CompiledMethod#objectAt:put:.
     primitives[68] = "throw new Error('CompiledMethod#objectAt:');\n";
     primitives[69] = "throw new Error('CompiledMethod#objectAt:put:');\n";
 
     // Object#basicNew and Object#basicNew:. 70 is also used for Interval new.
-    primitives[70] = "return __smalltalk.basicNew(this);\n";
-    primitives[71] = "return __smalltalk.basicNew_(this, {0});\n";
+    primitives[70] = "return $R.basicNew(this);\n";
+    primitives[71] = "return $R.basicNew_(this, {0});\n";
 
     // Object#instVarAt:.
     // bug: only works for SmallIntegers.
-    primitives[73] = "return this[this.__class.__iv[__smalltalk.toJSIndex({0})]];\n";
+    primitives[73] = "return this[this.__class.__iv[$R.toJSIndex({0})]];\n";
 
     // Object#instVarAt:put:.
     // bug: only works for SmallIntegers.
@@ -746,7 +746,7 @@ var console;
     }
     primitives[75] = (
         "if (!('__identityHash' in this))\n" +
-        "    this.__identityHash = __smalltalk.getNextHash();\n" +
+        "    this.__identityHash = $R.getNextHash();\n" +
         "return this.__identityHash;\n");
 
     // Object#someInstance and Object#nextInstance.
@@ -758,18 +758,18 @@ var console;
 
     // BlockContext#valueWithArguments:
     primitives[82] = (
-        "return this.__fn.apply(null, __smalltalk.toJSArrayReadOnly({0}));\n");
+        "return this.__fn.apply(null, $R.toJSArrayReadOnly({0}));\n");
 
     // Behavior#flushCache.
-    primitives[89] = "return __smalltalk.nil;\n";
+    primitives[89] = "return $R.nil;\n";
 
     // InputSensor>>primGetNextEvent:. Totally bogus implementation.
     primitives[94] = (
-        "{0}.__array[0] = __smalltalk.Integer(0);\n" +
+        "{0}.__array[0] = $R.Integer(0);\n" +
         "return this;");
 
     // BitBlt#copyBits. Totally bogus implementation.
-    primitives[96] = "return __smalltalk.nil;\n";
+    primitives[96] = "return $R.nil;\n";
 
     // SystemDictionary#snapshotPrimitive.
     primitives[97] = "throw new Error('SystemDictionary#snapshotPrimitive');\n";
@@ -778,18 +778,18 @@ var console;
     primitives[100] = (
         "var $$s = {0}.__str.replace(/:/g, '_');\n" +
         "if (typeof {2}.__im[$$s] !== 'function')\n" +
-        "    throw new Error('No method ' + {0}.__str + ' in class ' + {2}._name.__str)\n" +
+        "    throw new Error('No method ' + {0}.__str + ' in class ' + {2}.name().__str)\n" +
         "return {2}.__im[$$s].apply(this, {1}.__array);\n");
 
     // Object#==.
     primitives[110] = (
-        "return this === {0} ? __smalltalk.true : __smalltalk.false;");
+        "return this === {0} ? $R.true : $R.false;");
 
     // Object#class.
     primitives[111] = "return this.__class;\n";
 
     // SystemDictionary#quitPrimitive.
-    primitives[113] = "__smalltalk.quit();\n"
+    primitives[113] = "$R.quit();\n"
 
     // SystemDictionary#exitToDebugger.
     primitives[114] = "debugger;\n";
@@ -797,7 +797,7 @@ var console;
     // Time primSecondsClock.
     var squeakEpoch = new Date(1901, 0, 1, 0, 0, 0).getTime() / 1000;
     primitives[137] = (
-        "return __smalltalk.Integer(Math.floor(new Date().getTime() / 1000) - __smalltalk.squeakEpoch);\n");
+        "return $R.Integer(Math.floor(new Date().getTime() / 1000) - $R.squeakEpoch);\n");
 
     // Object#someObject and Object#nextObject.
     primitives[138] = "throw new Error('Object#someObject');\n";

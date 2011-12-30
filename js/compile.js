@@ -15,7 +15,7 @@
 // JavaScript names (all of these are local to the JS function we emit):
 //   _k24 (and other integers) - Constants.
 //
-//   __smalltalk, $B, $G - Runtime support.
+//   $R, $B, $G - Runtime support.
 //
 //   _SmallInteger, _Array, _Symbol - Class objects or constant pools.
 //          These names always match /^_[A-Z][A-Za-z0-9]*$/.
@@ -319,9 +319,9 @@
 
         // Support for Smalltalk constants
         this.constantDecls = [];
-        this.nil = this.addConstant("__smalltalk.nil");
-        this.true_ = this.addConstant("__smalltalk.true");
-        this.false_ = this.addConstant("__smalltalk.false");
+        this.nil = this.addConstant("$R.nil");
+        this.true_ = this.addConstant("$R.true");
+        this.false_ = this.addConstant("$R.false");
         this.charCache = Object.create(null);
         this.symbolCache = Object.create(null);
         this.stringCache = Object.create(null);
@@ -349,21 +349,21 @@
             assert(c.length === 1);
             var name = this.charCache[c];
             if (name === undefined)
-                name = this.charCache[c] = this.addConstant("__smalltalk.chars[" + c.charCodeAt(0) + "]");
+                name = this.charCache[c] = this.addConstant("$R.chars[" + c.charCodeAt(0) + "]");
             return name;
         },
 
         getSymbol: function getSymbol(s) {
             var name = this.symbolCache[s];
             if (name === undefined)
-                name = this.symbolCache[s] = this.addConstant("__smalltalk.Symbol(" + uneval(s) + ")");
+                name = this.symbolCache[s] = this.addConstant("$R.Symbol(" + uneval(s) + ")");
             return name;
         },
 
         getString: function getString(s) {
             var name = this.stringCache[s];
             if (name === undefined)
-                name = this.stringCache[s] = this.addConstant("__smalltalk.String(" + uneval(s) + ")");
+                name = this.stringCache[s] = this.addConstant("$R.String(" + uneval(s) + ")");
             return name;
         },
 
@@ -371,14 +371,14 @@
             var s = "" + n;
             var name = this.integerCache[s];
             if (name === undefined)
-                name = this.integerCache[s] = this.addConstant("__smalltalk.SmallInteger(" + s + ")");
+                name = this.integerCache[s] = this.addConstant("$R.SmallInteger(" + s + ")");
             return name;
         },
 
         getLargeInteger: function getLargeInteger(s) {
             var name = this.integerCache[s];
             if (name === undefined)
-                name = this.integerCache[s] = this.addConstant("__smalltalk.LargeInteger('" + s + "')");
+                name = this.integerCache[s] = this.addConstant("$R.LargeInteger('" + s + "')");
             return name;
         },
 
@@ -395,7 +395,7 @@
 
             var name = this.floatCache[s];
             if (name === undefined)
-                name = this.floatCache[s] = this.addConstant("__smalltalk.Float(" + s + ")");
+                name = this.floatCache[s] = this.addConstant("$R.Float(" + s + ")");
             return name;
         },
 
@@ -495,7 +495,7 @@
                 }
             }
 
-            return ("__smalltalk.initObjectGraph(" +
+            return ("$R.initObjectGraph(" +
                     "[\n        " + objectCode.join(",\n        ") + "\n    ], " +
                     "[\n        " + refCode.join(",\n        ") + "\n    ]" +
                     ");\n");
@@ -701,7 +701,7 @@
                 case "Self": return thisObject();
 
                 case "ThisContext":
-                    return "__smalltalk.getThisContext()";
+                    return "$R.getThisContext()";
 
                 case "Identifier":
                     throw new Error("internal error: bind phase did not bind identifier");
@@ -739,14 +739,14 @@
                     {
                         var indent2 = indent + "    ";
                         var exprs = n.elements.map(function (n2) { return translateExpr(n2, ASSIGN_PREC, indent2); });
-                        return comp.addConstant("__smalltalk.Array([" + exprs.join(", ") + "])");
+                        return comp.addConstant("$R.Array([" + exprs.join(", ") + "])");
                     }
 
                 case "ArrayExpr":
                     {
                         var indent2 = indent + "    ";
                         var exprs = n.elements.map(function (n2) { return translateExpr(n2, ASSIGN_PREC, indent2); });
-                        return "__smalltalk.Array([" + exprs.join(", ") + "])";
+                        return "$R.Array([" + exprs.join(", ") + "])";
                     }
 
                 case "Block":
@@ -795,7 +795,7 @@
                 case "AnswerExpr":
                     // This can happen only if a block has been inlined.
                     methodRequiresAnswer = true;
-                    return "__smalltalk.answer($a, " + translateExpr(n.expr, ASSIGN_PREC, indent + "    ") + ")";
+                    return "$R.answer($a, " + translateExpr(n.expr, ASSIGN_PREC, indent + "    ") + ")";
 
                 case "MessageExpr":
                     {
@@ -929,7 +929,7 @@
                 for (var i = 0; i < cls.weirdness.length; i++)
                     s += "    // " + JSON.stringify(cls.weirdness[i]) + "\n";
 
-                s += "    var _" + cls.name + " = __smalltalk.defClass('" + cls.name + "', " +
+                s += "    var _" + cls.name + " = $R.defClass('" + cls.name + "', " +
                     (cls.superclassName === null ? "null" : "_" + cls.superclassName) + ", ";
 
                 var a = [];
@@ -982,9 +982,9 @@
         },
 
         wrapOutput: function wrapOutput(code) {
-            return ("(function (__smalltalk) {\n" +
-                    "    var $B = __smalltalk.Block;\n" +
-                    (this.requiresGlobal ? "    var $G = __smalltalk.globals;\n" : "") +
+            return ("(function ($R) {\n" +
+                    "    var $B = $R.Block;\n" +
+                    (this.requiresGlobal ? "    var $G = $R.globals;\n" : "") +
                     (this.constantDecls.length === 0 ? "" : "    var\n" + this.constantDecls.join(",\n") + ";\n") +
                     code +
                     "});\n");
