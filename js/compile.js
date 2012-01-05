@@ -454,43 +454,121 @@
             }
 
             var graph = comp.classInfo.objectGraph;
+            var objects = graph.objects;
 
-            var objectCode = [];
-            for (var i = 0; i < graph.objects.length; i++) {
-                var obj = graph.objects[i];
-                if (obj === null) {
-                    objectCode[i] = "null";
-                } else if (obj.type === "Class") {
-                    objectCode[i] = "_" + obj.name;
-                } else {
-                    assertEq(obj.type, "Object");
-                    var s = "[_" + obj.cls + ", [" + obj.iv.map(translateValue).join(", ") + "]";
-
-                    // Translate variable-length data, if any.
-                    var vld = obj.vld;
-                    if (vld !== null) {
-                        if (typeof vld === "string") {
-                            // Binary data.
-                            s += ", '" + vld + "'";
-                        } else {
-                            s += ", [" + vld.map(translateValue).join(", ") + "]";
-                        }
-                    }
-                    s += "]";
-
-                    objectCode[i] = s;
+            // Build the roots array.
+            var roots = [];
+            for (var key in graph.globals) {
+                var val = graph.globals[key];
+                if (typeof val === 'number')
+                    roots.push(val);
+            }
+            for (var clsName in graph.classVars) {
+                var cls = graph.classVars[clsName];
+                for (var key in cls) {
+                    var val = cls[key];
+                    if (typeof val === 'number')
+                        roots.push(val);
                 }
             }
 
-            function attr(key) {
-                return /^[A-Za-z_$][0-9A-Za-z$]*$/.test(key) ? "." + key : "[" + JSON.stringify(key) + "]";
+            var reachability = smalltalk.algorithms.computeReachability({
+                objectCount: function () { return objects.length; },
+                rootPointers: function () { return roots; },
+                pointersFrom: function (x) {
+                    if (objects[x] === null || objects[x].type !== "Object")
+                        return [];
+
+                    var values = objects[x].iv;
+                    var vld = objects[x].vld;
+                    if (vld !== null)
+                        values = values.concat(vld);
+                    return values.filter(function (val) { return typeof val === "number"; });
+                }
+            });
+
+            // Generate the code for binding values to classvars and globals.
+            var nextMultiEdgeId = 0;
+            function objExpr(val) {
+                var desc = objects[val];
+                var code = "$N(_" + desc.cls + ", [" + desc.iv.map(valCode).join(", ") + "]";
+                var vld = desc.vld;
+                if (typeof vld === "string")
+                    code += ", '" + vld + "'";
+                else if (vld !== null && vld.length > 0)
+                    code += ", [" + vld.map(valCode).join(", ") + "]";
+                return code + ")";
             }
             function valCode(val) {
-                return typeof val === "number" ? "$H[" + val + "]" : translateValue(val);
+                if (typeof val !== "number")
+                    return translateValue(val);
+                var desc = objects[val];
+                if (desc === null)
+                    return comp.nil;
+                if (desc.type === "Class")
+                    return "_" + desc.name;
+                if (desc.id === undefined) {
+                    switch (reachability.types[val]) {
+                    case 1:  // reachable via a single edge
+                        return objExpr(val);
+
+                    case 2:  // reachable via multiple edges
+                        var vx = objExpr(val);
+                        desc.id = "_h" + nextMultiEdgeId++;
+                        refCode.push("    var " + desc.id + " = " + vx + ";\n");
+                        break;
+
+                    case 3:  // reachable and in a cycle
+                        // Build the array of all objects in the same component.
+                        var compid = reachability.components[val];
+                        var component = [];
+                        for (var i = 0; i < objects.length; i++) {
+                            if (reachability.components[i] === compid)
+                                component.push(i);
+                        }
+
+                        // Build the array data for creating the component.
+                        var data = [];
+                        for (var j = 0; j < component.length; j++) {
+                            var jdesc = objects[component[j]];
+                            var val2Code = function (val2) {
+                                if (typeof val2 === "number" && reachability.components[val2] === compid)
+                                    return "" + component.indexOf(val2);
+                                else
+                                    return valCode(val2);
+                            };
+                            var item = "[_" + jdesc.cls + ", [" + jdesc.iv.map(val2Code) + "]";
+                            var jvld = jdesc.vld;
+                            if (typeof jvld === "string")
+                                item += ", '" + jvld + "'";
+                            else if (jvld !== null && jvld.length > 0)
+                                item += ", [" + jvld.map(val2Code).join(", ") + "]";
+                            item += "]";
+                            data[j] = item;
+                        }
+
+                        // Emit it.
+                        var name = "_h" + nextMultiEdgeId++;
+                        refCode.push("    var " + name + " = $C([\n        " + data.join(",\n        ") + "]);\n");
+
+                        // Set the .id property, not just for this object, but for all the objects we created.
+                        for (var j = 0; j < component.length; j++)
+                            objects[component[j]].id = name + "[" + j + "]";
+                        break;
+
+                    default:
+                        assert(0, "bug: reachable object but reachability.types[] = " + reachability.types[val]);
+                    }
+                }
+                return desc.id;
+            }
+            function attr(key) {
+                return /^[A-Za-z_$][0-9A-Za-z$]*$/.test(key) ? "." + key : "[" + JSON.stringify(key) + "]";
             }
             var refCode = [];
             for (var key in graph.globals) {
                 var val = graph.globals[key];
+                comp.requiresGlobal = true;
                 refCode.push("    $G" + attr(key) + " = " + valCode(val) + ";\n");
             }
             for (var clsName in graph.classVars) {
@@ -501,8 +579,7 @@
                 }
             }
 
-            return ("var $H = $R.initObjectGraph(" +
-                    "[\n        " + objectCode.join(",\n        ") + "\n    ]);\n" +
+            return ("var $N = $R.newObjectFromData, $C = $R.newCyclicObjectsFromData;\n" +
                     refCode.join(""));
         },
 

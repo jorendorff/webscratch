@@ -141,7 +141,8 @@ var smalltalk;
         return messages;
     }
 
-    smalltalk = {};
+    if (smalltalk === undefined)
+        smalltalk = {};
     smalltalk.ast = {
         Nil: function Nil() { return _nil; },
         True: function True() { return _true; },

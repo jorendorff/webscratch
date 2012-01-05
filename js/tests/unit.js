@@ -1,6 +1,7 @@
 load("../BigInt.js");
 load("../ast.js");
 load("../parse.js");
+load("../algorithms.js");
 
 (function () {
     "use strict";
@@ -108,6 +109,9 @@ load("../parse.js");
     // Parser must reject extra tokens after an AnswerExpr.
     assertThrows(function () { smalltalk.parseMethodNoArgs("^0. ^0."); });
     assertThrows(function () { smalltalk.parseMethodNoArgs("^0. +"); });
+
+    // Run algorithms tests
+    smalltalk.algorithms.test();
 
     print("pass");
 })();

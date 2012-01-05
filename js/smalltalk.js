@@ -1109,73 +1109,99 @@ var console;
     }
 
 
-    // === Runtime initialization
+    // === Object graph re-creation
 
-    function initObjectGraph(objDescs) {
+    function stringToWordArray(vld) {
+        var alen = vld.length / 8;
+        var arr = Uint32Array(alen);
+        for (var j = 0; j < alen; j++)
+            arr[j] = parseInt(vld.substring(j << 3, (j + 1) << 3), 16);
+        return arr;
+    }
+
+    function stringToByteArray(vld) {
+        var alen = vld.length / 2;
+        var arr = Uint8Array(alen);
+        for (var j = 0; j < alen; j++)
+            arr[j] = parseInt(vld.substring(j << 1, (j + 1) << 1), 16);
+        return arr;
+    }
+
+    function newObjectFromData(cls, iv, vld) {
+        var obj = basicNew(cls);
+        var keys = cls.__iv;
+        assertEq(iv.length, keys.length);
+        for (var i = 0; i < keys.length; i++)
+            obj[keys[i]] = iv[i];
+        if (vld !== undefined) {
+            var arr;
+            switch (cls.__flags) {
+            case 1:
+            case 2:
+                assert(Array.isArray(vld));
+                arr = vld;
+                break;
+            case 3:
+                arr = stringToWordArray(vld);
+                break;
+            case 4:
+                arr = stringToByteArray(vld);
+                break;
+            default:
+                assert(false);
+            }
+            obj.__array = arr;
+        }
+        return obj;
+    }
+
+    function newCyclicObjectsFromData(objDescs) {
         var objs = [];
         for (var i = 0; i < objDescs.length; i++) {
             var desc = objDescs[i];
-            if (desc === null) {
-                objs[i] = nil;
-            } else if (Array.isArray(desc)) {
-                objs[i] = basicNew(desc[0]);
-            } else {
-                assert(Object.prototype.isPrototypeOf.call(globals.Class.__im, desc));
-                objs[i] = desc;
-            }
+            objs[i] = basicNew(desc[0]);
         }
 
         for (var i = 0; i < objDescs.length; i++) {
             var desc = objDescs[i];
             var obj = objs[i];
-            if (Array.isArray(desc)) {
-                var keys = desc[0].__iv;
-                var values = desc[1];
-                for (var j = 0; j < keys.length; j++) {
-                    var v = values[j];
-                    if (typeof v === "number")
-                        v = objs[v];
-                    obj[keys[j]] = v;
-                }
+            var keys = desc[0].__iv;
+            var values = desc[1];
+            for (var j = 0; j < keys.length; j++) {
+                var v = values[j];
+                if (typeof v === "number")
+                    v = objs[v];
+                obj[keys[j]] = v;
+            }
 
-                if (desc.length > 2) {
-                    var vld = desc[2], arr;
-                    switch (obj.__class.__flags) {
-                    case 1:
-                    case 2:
-                        // Array data.
-                        for (var j = 0; j < vld.length; j++) {
-                            if (typeof vld[j] === "number")
-                                vld[j] = objs[vld[j]];
-                        }
-                        arr = vld;
-                        break;
-                    case 3:
-                        // Word data.
-                        var alen = vld.length / 8;
-                        arr = Uint32Array(alen);
-                        for (var j = 0; j < alen; j++)
-                            arr[j] = parseInt(vld.substring(j << 3, (j << 3) + 8), 16);
-                        break;
-                    case 4:
-                        // Byte data.
-                        var alen = vld.length / 2;
-                        arr = Uint8Array(alen);
-                        for (var j = 0; j < alen; j++)
-                            arr[j] = parseInt(vld.substring(j << 1, (j << 1) + 2), 16);
-                        break;
-                    default:
-                        debugger;
-                        assert(false);
+            if (desc.length > 2) {
+                var vld = desc[2], arr;
+                switch (obj.__class.__flags) {
+                case 1:
+                case 2:
+                    for (var j = 0; j < vld.length; j++) {
+                        if (typeof vld[j] === "number")
+                            vld[j] = objs[vld[j]];
                     }
-                    obj.__array = arr;
+                    arr = vld;
+                    break;
+                case 3:
+                    arr = stringToWordArray(vld);
+                    break;
+                case 4:
+                    arr = stringToByteArray(vld);
+                    break;
+                default:
+                    assert(false);
                 }
+                obj.__array = arr;
             }
         }
         return objs;
     }
 
-    // --- Other system functions
+    // === Other system functions
+
     function quitPrimitive() {
         if (global.quit)
             global.quit(0);
@@ -1214,6 +1240,7 @@ var console;
         toJSIndex: toJSIndex,
         toJSNaturalNumber: toJSNaturalNumber,
         quit: quitPrimitive,
-        initObjectGraph: initObjectGraph
+        newObjectFromData: newObjectFromData,
+        newCyclicObjectsFromData: newCyclicObjectsFromData
     };
 })(this);

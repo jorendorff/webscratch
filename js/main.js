@@ -5,6 +5,7 @@
 
     load('smalltalk.js');
     load('BigInt.js');
+    load('algorithms.js');
     load('ast.js');
     load('parse.js');
     load('deadcode.js');

@@ -9,6 +9,7 @@
     load("../parse.js");
     load("../deadcode.js");
     load("../bind.js");
+    load("../algorithms.js");
     load("../compile.js");
 
     var dump = argv.length === 1 && argv[0] === "-d";
